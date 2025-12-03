@@ -233,12 +233,47 @@ export class FlashcardPanel {
       text-align: center;
     }
     
+    .term-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      margin-bottom: 12px;
+    }
+    
     .term {
       font-size: 4.5em;
       font-weight: 700;
-      margin-bottom: 32px;
       color: var(--vscode-textLink-foreground);
       letter-spacing: 0.02em;
+    }
+    
+    .btn-speak {
+      background: transparent;
+      border: 2px solid var(--vscode-textLink-foreground);
+      color: var(--vscode-textLink-foreground);
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      padding: 0;
+    }
+    
+    .btn-speak:hover {
+      background: var(--vscode-textLink-foreground);
+      color: var(--vscode-editor-background);
+    }
+    
+    .phonetic {
+      font-size: 1.8em;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 32px;
+      font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif;
     }
     
     .example {
@@ -347,7 +382,11 @@ export class FlashcardPanel {
 <body>
   <div id="app">
     <div class="card" id="card-view">
-      <div class="term" id="term"></div>
+      <div class="term-container">
+        <div class="term" id="term"></div>
+        <button class="btn-speak" onclick="speak()" title="Pronounce">🔊</button>
+      </div>
+      <div class="phonetic" id="phonetic"></div>
       <div class="example" id="example"></div>
       
       <div id="front-buttons" class="buttons">
@@ -405,6 +444,8 @@ export class FlashcardPanel {
       
       // Show front
       document.getElementById('term').textContent = card.front.term;
+      document.getElementById('phonetic').textContent = card.front.phonetic || '';
+      document.getElementById('phonetic').classList.toggle('hidden', !card.front.phonetic);
       document.getElementById('example').textContent = card.front.example || '';
       document.getElementById('example').classList.toggle('hidden', !card.front.example);
       
@@ -418,6 +459,9 @@ export class FlashcardPanel {
       document.getElementById('front-buttons').classList.remove('hidden');
       document.getElementById('back-content').classList.add('hidden');
       document.getElementById('back-buttons').classList.add('hidden');
+      
+      // Auto-pronounce when card appears
+      speak();
     }
     
     function showEmpty(message) {
@@ -428,6 +472,68 @@ export class FlashcardPanel {
     
     function showError(message) {
       alert('Error: ' + message);
+    }
+    
+    // Cache the best English voice
+    let englishVoice = null;
+    
+    function findBestEnglishVoice() {
+      const voices = speechSynthesis.getVoices();
+      
+      // Priority list of preferred voices (macOS has good ones)
+      const preferredVoices = [
+        'Samantha',      // macOS - natural US English
+        'Alex',          // macOS - natural US English  
+        'Daniel',        // macOS - British English
+        'Karen',         // macOS - Australian English
+        'Google US English',
+        'Google UK English Female',
+        'Microsoft Zira',
+        'Microsoft David',
+      ];
+      
+      // Try to find a preferred voice
+      for (const name of preferredVoices) {
+        const voice = voices.find(v => v.name.includes(name));
+        if (voice) return voice;
+      }
+      
+      // Fallback: find any en-US or en-GB voice
+      const enVoice = voices.find(v => 
+        v.lang.startsWith('en-') && !v.name.includes('Compact')
+      );
+      if (enVoice) return enVoice;
+      
+      // Last resort: any English voice
+      return voices.find(v => v.lang.startsWith('en'));
+    }
+    
+    // Initialize voice when available
+    speechSynthesis.onvoiceschanged = () => {
+      englishVoice = findBestEnglishVoice();
+      console.log('[WordSlash] Selected voice:', englishVoice?.name);
+    };
+    
+    // Try to get voice immediately (some browsers have it ready)
+    englishVoice = findBestEnglishVoice();
+    
+    function speak() {
+      if (!currentCard) return;
+      
+      const term = currentCard.front.term;
+      const utterance = new SpeechSynthesisUtterance(term);
+      
+      // Use the best voice we found
+      if (englishVoice) {
+        utterance.voice = englishVoice;
+      }
+      
+      utterance.lang = 'en-US';
+      utterance.rate = 0.85;   // Slightly slower for clarity
+      utterance.pitch = 1.0;   // Normal pitch
+      
+      speechSynthesis.cancel(); // Stop any ongoing speech
+      speechSynthesis.speak(utterance);
     }
     
     function revealBack() {

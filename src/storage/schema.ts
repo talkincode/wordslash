@@ -16,6 +16,7 @@ export interface CardContext {
 
 export interface CardFront {
   term: string;
+  phonetic?: string;
   example?: string;
   context?: CardContext;
 }
