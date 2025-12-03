@@ -4,6 +4,7 @@
   "description": "English vocabulary learning with spaced repetition in VS Code",
   "version": "0.1.0",
   "publisher": "wordslash",
+  "icon": "media/icon.png",
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -14,10 +15,36 @@
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wordslash",
+          "title": "WordSlash",
+          "icon": "media/icon.svg"
+        }
+      ]
+    },
+    "views": {
+      "wordslash": [
+        {
+          "type": "webview",
+          "id": "wordslash.dashboardView",
+          "name": "Dashboard",
+          "icon": "media/icon.svg",
+          "contextualTitle": "WordSlash"
+        }
+      ]
+    },
     "commands": [
       {
+        "command": "wordslash.openDashboard",
+        "title": "WordSlash: Open Dashboard",
+        "icon": "$(book)"
+      },
+      {
         "command": "wordslash.openFlashcards",
-        "title": "WordSlash: Open Flashcards"
+        "title": "WordSlash: Open Flashcards",
+        "icon": "$(note)"
       },
       {
         "command": "wordslash.addCardFromSelection",
@@ -42,6 +69,10 @@
       {
         "command": "wordslash.dev.generateSampleData",
         "title": "WordSlash: [Dev] Generate Sample Data"
+      },
+      {
+        "command": "wordslash.openSettings",
+        "title": "WordSlash: Open Settings"
       }
     ],
     "menus": {
@@ -67,6 +98,46 @@
           "minimum": 1,
           "maximum": 100,
           "description": "Maximum number of new cards to learn per day"
+        },
+        "wordslash.tts.engine": {
+          "type": "string",
+          "default": "youdao",
+          "enum": ["youdao", "google", "browser", "azure", "openai"],
+          "enumDescriptions": [
+            "Youdao Dictionary - High quality human recordings for words",
+            "Google Translate TTS - Good quality, works for phrases",
+            "Browser Built-in - System speech synthesis (offline)",
+            "Azure Neural TTS - Premium quality (requires API key)",
+            "OpenAI TTS - Premium quality (requires API key)"
+          ],
+          "description": "Text-to-speech engine for pronunciation"
+        },
+        "wordslash.tts.rate": {
+          "type": "number",
+          "default": 1.0,
+          "minimum": 0.5,
+          "maximum": 2.0,
+          "description": "Speech rate (0.5 = slow, 1.0 = normal, 2.0 = fast)"
+        },
+        "wordslash.tts.autoPlay": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically play pronunciation when card appears"
+        },
+        "wordslash.tts.azureKey": {
+          "type": "string",
+          "default": "",
+          "description": "Azure Speech Services API key (for azure engine)"
+        },
+        "wordslash.tts.azureRegion": {
+          "type": "string",
+          "default": "eastus",
+          "description": "Azure Speech Services region (e.g., eastus, westus)"
+        },
+        "wordslash.tts.openaiKey": {
+          "type": "string",
+          "default": "",
+          "description": "OpenAI API key (for openai engine)"
         }
       }
     }

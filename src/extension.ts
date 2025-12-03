@@ -4,6 +4,8 @@ import { executeAddCard } from './commands/addCard';
 import { executeImportBulk } from './commands/importBulk';
 import { executeExportTemplate } from './commands/exportTemplate';
 import { FlashcardPanel } from './webview/panel';
+import { DashboardPanel } from './webview/dashboard';
+import { DashboardViewProvider } from './webview/dashboardViewProvider';
 import { generateSampleCards } from './commands/devSampleData';
 
 let storage: JsonlStorage | undefined;
@@ -15,10 +17,26 @@ export function activate(context: vscode.ExtensionContext) {
   const storagePath = context.globalStorageUri.fsPath;
   storage = new JsonlStorage(storagePath);
 
+  // Register sidebar view provider
+  const dashboardViewProvider = new DashboardViewProvider(context.extensionUri, storage);
+  context.subscriptions.push(
+    vscode.window.registerWebviewViewProvider(
+      DashboardViewProvider.viewType,
+      dashboardViewProvider
+    )
+  );
+
   // Register commands
   const openFlashcardsCommand = vscode.commands.registerCommand('wordslash.openFlashcards', () => {
     if (storage) {
       FlashcardPanel.createOrShow(context.extensionUri, storage);
+    }
+  });
+
+  // Dashboard command
+  const openDashboardCommand = vscode.commands.registerCommand('wordslash.openDashboard', () => {
+    if (storage) {
+      DashboardPanel.createOrShow(context.extensionUri, storage);
     }
   });
 
@@ -68,14 +86,24 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  // Open settings command
+  const openSettingsCommand = vscode.commands.registerCommand(
+    'wordslash.openSettings',
+    () => {
+      vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash');
+    }
+  );
+
   context.subscriptions.push(
     openFlashcardsCommand,
+    openDashboardCommand,
     addCardCommand,
     exportBackupCommand,
     importBackupCommand,
     importBulkCommand,
     exportTemplateCommand,
-    devGenerateSampleCommand
+    devGenerateSampleCommand,
+    openSettingsCommand
   );
 }
 

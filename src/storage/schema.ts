@@ -213,3 +213,100 @@ export interface BulkImportResult {
   /** Error messages for skipped cards */
   errors: string[];
 }
+
+// ============================================
+// Dashboard Statistics Types
+// ============================================
+
+/**
+ * Statistics for the dashboard
+ */
+export interface DashboardStats {
+  /** Total number of active cards */
+  totalCards: number;
+  /** Number of cards due for review */
+  dueCards: number;
+  /** Number of new cards (never reviewed) */
+  newCards: number;
+  /** Number of cards learned (at least one review) */
+  learnedCards: number;
+  /** Number of cards mastered (interval >= 21 days) */
+  masteredCards: number;
+  /** Total review count */
+  totalReviews: number;
+  /** Reviews today */
+  reviewsToday: number;
+  /** Current streak (consecutive days with reviews) */
+  currentStreak: number;
+  /** Average ease factor */
+  averageEaseFactor: number;
+  /** Retention rate (good/easy vs again/hard) */
+  retentionRate: number;
+  /** Cards by type */
+  cardsByType: {
+    word: number;
+    phrase: number;
+    sentence: number;
+  };
+  /** Review ratings distribution */
+  ratingsDistribution: {
+    again: number;
+    hard: number;
+    good: number;
+    easy: number;
+  };
+  /** Reviews per day (last 30 days) */
+  reviewsPerDay: Array<{ date: string; count: number }>;
+}
+
+// ============================================
+// Knowledge Graph Types
+// ============================================
+
+/**
+ * A node in the vocabulary knowledge graph
+ */
+export interface KnowledgeGraphNode {
+  /** Unique identifier (card ID or generated ID for related terms) */
+  id: string;
+  /** The term/word */
+  label: string;
+  /** Node type */
+  type: 'card' | 'synonym' | 'antonym' | 'tag';
+  /** SRS mastery level (0-5): 0=new, 1-2=learning, 3-4=learned, 5=mastered */
+  masteryLevel?: number;
+  /** Color for visualization (optional, UI can derive from masteryLevel) */
+  color?: string;
+  /** Size weight for visualization */
+  weight?: number;
+}
+
+/**
+ * An edge in the vocabulary knowledge graph
+ */
+export interface KnowledgeGraphEdge {
+  /** Source node ID */
+  source: string;
+  /** Target node ID */
+  target: string;
+  /** Relationship type */
+  type: 'synonym' | 'antonym' | 'tag' | 'related';
+  /** Edge weight for visualization */
+  weight?: number;
+}
+
+/**
+ * The complete knowledge graph structure
+ */
+export interface KnowledgeGraph {
+  /** All nodes in the graph */
+  nodes: KnowledgeGraphNode[];
+  /** All edges in the graph */
+  edges: KnowledgeGraphEdge[];
+  /** Metadata */
+  meta: {
+    totalCards: number;
+    totalConnections: number;
+    generatedAt: number;
+  };
+}

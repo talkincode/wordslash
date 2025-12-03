@@ -95,3 +95,62 @@ export interface UpdateCardInput {
   notes?: string;
   tags?: string[];
 }
+
+// ============================================
+// Dashboard Statistics Types
+// ============================================
+
+export interface DashboardStats {
+  totalCards: number;
+  dueCards: number;
+  newCards: number;
+  learnedCards: number;
+  masteredCards: number;
+  totalReviews: number;
+  reviewsToday: number;
+  currentStreak: number;
+  averageEaseFactor: number;
+  retentionRate: number;
+  cardsByType: {
+    word: number;
+    phrase: number;
+    sentence: number;
+  };
+  ratingsDistribution: {
+    again: number;
+    hard: number;
+    good: number;
+    easy: number;
+  };
+  reviewsPerDay: Array<{ date: string; count: number }>;
+}
+
+// ============================================
+// Knowledge Graph Types
+// ============================================
+
+export interface KnowledgeGraphNode {
+  id: string;
+  label: string;
+  type: 'card' | 'synonym' | 'antonym' | 'tag';
+  masteryLevel?: number;
+  color?: string;
+  weight?: number;
+}
+
+export interface KnowledgeGraphEdge {
+  source: string;
+  target: string;
+  type: 'synonym' | 'antonym' | 'tag' | 'related';
+  weight?: number;
+}
+
+export interface KnowledgeGraph {
+  nodes: KnowledgeGraphNode[];
+  edges: KnowledgeGraphEdge[];
+  meta: {
+    totalCards: number;
+    totalConnections: number;
+    generatedAt: number;
+  };
+}

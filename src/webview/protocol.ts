@@ -1,7 +1,7 @@
 // Webview protocol - Message type definitions
 // PURE MODULE: No vscode imports allowed
 
-import type { Card, ReviewRating, SrsState } from '../storage/schema';
+import type { Card, ReviewRating, SrsState, DashboardStats, KnowledgeGraph } from '../storage/schema';
 
 // UI → Extension messages
 export type UiReadyMessage = { type: 'ui_ready' };
@@ -15,19 +15,36 @@ export type RateCardMessage = {
 export type RevealBackMessage = { type: 'reveal_back'; cardId: string };
 export type NextMessage = { type: 'next' };
 
+// Dashboard messages
+export type GetDashboardStatsMessage = { type: 'get_dashboard_stats' };
+export type GetKnowledgeGraphMessage = { 
+  type: 'get_knowledge_graph';
+  maxNodes?: number;
+  includeOrphans?: boolean;
+  filterTag?: string;
+};
+export type StartFlashcardStudyMessage = { type: 'start_flashcard_study' };
+export type OpenSettingsMessage = { type: 'open_settings' };
+export type GetTtsSettingsMessage = { type: 'get_tts_settings' };
+export type RefreshMessage = { type: 'refresh' };
+
 export type UiToExtensionMessage =
   | UiReadyMessage
   | GetNextCardMessage
   | RateCardMessage
   | RevealBackMessage
-  | NextMessage;
+  | NextMessage
+  | GetDashboardStatsMessage
+  | GetKnowledgeGraphMessage
+  | StartFlashcardStudyMessage
+  | OpenSettingsMessage
+  | GetTtsSettingsMessage
+  | RefreshMessage;
 
 // Extension → UI messages
 export type CardMessage = { type: 'card'; card: Card; srs?: SrsState };
 export type EmptyMessage = { type: 'empty'; message: string };
 export type ErrorMessage = { type: 'error'; message: string };
-
-export type ExtensionToUiMessage = CardMessage | EmptyMessage | ErrorMessage;
 
 // Stats message for UI
 export type StatsMessage = {
@@ -36,6 +53,29 @@ export type StatsMessage = {
   due: number;
   newCards: number;
 };
+
+// Dashboard messages
+export type DashboardStatsMessage = { type: 'dashboard_stats'; stats: DashboardStats };
+export type KnowledgeGraphMessage = { type: 'knowledge_graph'; graph: KnowledgeGraph };
+export type TtsSettingsMessage = { 
+  type: 'tts_settings'; 
+  settings: {
+    engine: string;
+    rate: number;
+    autoPlay: boolean;
+    azureKey?: string;
+    azureRegion?: string;
+    openaiKey?: string;
+  };
+};
+
+export type ExtensionToUiMessage = 
+  | CardMessage 
+  | EmptyMessage 
+  | ErrorMessage
+  | DashboardStatsMessage
+  | KnowledgeGraphMessage
+  | TtsSettingsMessage;
 
 /**
  * Validate UI to Extension message
@@ -51,6 +91,14 @@ export function isValidUiMessage(msg: unknown): msg is UiToExtensionMessage {
     case 'ui_ready':
     case 'get_next_card':
     case 'next':
+    case 'get_dashboard_stats':
+    case 'start_flashcard_study':
+    case 'open_settings':
+    case 'get_tts_settings':
+      return true;
+
+    case 'get_knowledge_graph':
+      // Optional parameters are validated loosely
       return true;
 
     case 'rate_card':
