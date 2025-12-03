@@ -18,12 +18,16 @@ export interface CardFront {
   term: string;
   phonetic?: string;
   example?: string;
+  /** Chinese translation of example sentence */
+  exampleCn?: string;
   context?: CardContext;
 }
 
 export interface CardBack {
   translation?: string;
   explanation?: string;
+  /** Chinese explanation */
+  explanationCn?: string;
   synonyms?: string[];
   antonyms?: string[];
   notes?: string;
@@ -152,4 +156,60 @@ export function createReviewEvent(input: CreateReviewEventInput): ReviewEvent {
     mode: input.mode,
     durationMs: input.durationMs,
   };
+}
+
+// ============================================
+// Bulk Import Types
+// ============================================
+
+/**
+ * Template format for bulk import JSON file
+ */
+export interface BulkImportTemplate {
+  version: number;
+  cards: BulkCardInput[];
+}
+
+/**
+ * Simplified input format for each card in bulk import
+ */
+export interface BulkCardInput {
+  /** Required: the word, phrase, or sentence */
+  term: string;
+  /** Optional: auto-inferred from word count if not provided */
+  type?: CardType;
+  /** Optional: phonetic transcription */
+  phonetic?: string;
+  /** Optional: example sentence */
+  example?: string;
+  /** Optional: Chinese translation of example sentence */
+  exampleCn?: string;
+  /** Optional: Chinese translation */
+  translation?: string;
+  /** Optional: English explanation */
+  explanation?: string;
+  /** Optional: Chinese explanation */
+  explanationCn?: string;
+  /** Optional: list of synonyms */
+  synonyms?: string[];
+  /** Optional: list of antonyms */
+  antonyms?: string[];
+  /** Optional: personal notes */
+  notes?: string;
+  /** Optional: tags for categorization */
+  tags?: string[];
+}
+
+/**
+ * Result of bulk import operation
+ */
+export interface BulkImportResult {
+  /** Number of cards successfully imported */
+  imported: number;
+  /** Number of cards updated (overwritten) */
+  updated: number;
+  /** Number of cards skipped due to errors */
+  skipped: number;
+  /** Error messages for skipped cards */
+  errors: string[];
 }

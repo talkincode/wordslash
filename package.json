@@ -32,6 +32,14 @@
         "title": "WordSlash: Import Backup"
       },
       {
+        "command": "wordslash.importBulk",
+        "title": "WordSlash: Import Cards from JSON"
+      },
+      {
+        "command": "wordslash.exportTemplate",
+        "title": "WordSlash: Export JSON Template"
+      },
+      {
         "command": "wordslash.dev.generateSampleData",
         "title": "WordSlash: [Dev] Generate Sample Data"
       }

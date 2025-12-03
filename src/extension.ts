@@ -1,6 +1,8 @@
 import * as vscode from 'vscode';
 import { JsonlStorage } from './storage/storage';
 import { executeAddCard } from './commands/addCard';
+import { executeImportBulk } from './commands/importBulk';
+import { executeExportTemplate } from './commands/exportTemplate';
 import { FlashcardPanel } from './webview/panel';
 import { generateSampleCards } from './commands/devSampleData';
 
@@ -37,6 +39,24 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.window.showInformationMessage('WordSlash: Import backup coming soon!');
   });
 
+  // Bulk import command
+  const importBulkCommand = vscode.commands.registerCommand(
+    'wordslash.importBulk',
+    async () => {
+      if (storage) {
+        await executeImportBulk(storage);
+      }
+    }
+  );
+
+  // Export template command
+  const exportTemplateCommand = vscode.commands.registerCommand(
+    'wordslash.exportTemplate',
+    async () => {
+      await executeExportTemplate();
+    }
+  );
+
   // Dev command: generate sample data
   const devGenerateSampleCommand = vscode.commands.registerCommand(
     'wordslash.dev.generateSampleData',
@@ -53,6 +73,8 @@ export function activate(context: vscode.ExtensionContext) {
     addCardCommand,
     exportBackupCommand,
     importBackupCommand,
+    importBulkCommand,
+    exportTemplateCommand,
     devGenerateSampleCommand
   );
 }
