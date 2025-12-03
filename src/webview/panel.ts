@@ -112,12 +112,41 @@ export class FlashcardPanel {
         vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash.tts');
         break;
 
-      case 'refresh':
-        // Clear recent cards cache and reload
+      case 'refresh': {
+        console.log('[WordSlash] Refresh requested');
+        // Clear all caches and reload from storage
         this._recentCardIds = [];
+        const currentCardId = this._currentCard?.id;
         this._currentCard = null;
-        await this._sendNextCard();
+        
+        // Try to reload the same card if it still exists, otherwise get next
+        if (currentCardId) {
+          console.log('[WordSlash] Reloading current card:', currentCardId);
+          const cards = await this._storage.readAllCards();
+          const events = await this._storage.readAllEvents();
+          console.log('[WordSlash] Reloaded cards:', cards.length, 'events:', events.length);
+          const index = buildIndex(cards, events);
+          
+          // Get the latest version of the card from the index
+          const reloadedCard = index.cards.get(currentCardId);
+          
+          if (reloadedCard) {
+            console.log('[WordSlash] Card found, reloading:', reloadedCard.front.term);
+            console.log('[WordSlash] Card morphemes:', reloadedCard.front.morphemes);
+            this._currentCard = reloadedCard;
+            const srs = index.srsStates.get(reloadedCard.id);
+            this._postMessage({ type: 'card', card: reloadedCard, srs });
+          } else {
+            console.log('[WordSlash] Card not found or deleted, getting next');
+            // Card was deleted, get next one
+            await this._sendNextCard();
+          }
+        } else {
+          console.log('[WordSlash] No current card, getting next');
+          await this._sendNextCard();
+        }
         break;
+      }
     }
   }
 
@@ -210,7 +239,8 @@ export class FlashcardPanel {
       // Get current SRS state and calculate next
       const currentSrs = index.srsStates.get(cardId);
       if (currentSrs) {
-        const nextSrs = calculateNextState(currentSrs, rating, Date.now());
+        // Note: nextSrs calculation validates the SRS algorithm but index is already rebuilt
+        calculateNextState(currentSrs, rating, Date.now());
         // Save updated index
         await this._storage.atomicWriteJson('index.json', {
           version: 1,
@@ -273,19 +303,15 @@ export class FlashcardPanel {
     }
     
     .term-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 16px;
       margin-bottom: 16px;
     }
     
     .term {
-      font-size: 3.2em;
-      font-weight: 700;
+      font-size: 2.5em;
+      font-weight: 500;
       color: var(--vscode-textLink-foreground);
-      letter-spacing: 0.02em;
-      font-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      letter-spacing: 0.04em;
+      font-family: var(--vscode-editor-font-family), Monaco, 'SF Mono',  'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
     }
     
     .btn-speak {
@@ -317,16 +343,23 @@ export class FlashcardPanel {
       border-width: 2px;
     }
     
+    .phonetic-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+    
     .phonetic {
       font-size: 1.3em;
       color: var(--vscode-descriptionForeground);
-      margin-bottom: 20px;
       font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif;
     }
     
     .morphemes {
-      font-size: 1.1em;
-      color: var(--vscode-textLink-foreground);
+      font-size: 2.1em;
+      color: #00d4ff;
       font-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
       margin-top: 8px;
       margin-bottom: 16px;
@@ -340,7 +373,7 @@ export class FlashcardPanel {
     }
     
     .morphemes .morpheme {
-      font-weight: 600;
+      font-weight: 500;
     }
     
     .example-container {
@@ -373,11 +406,6 @@ export class FlashcardPanel {
       margin-top: 24px;
       padding-top: 24px;
       border-top: 2px solid var(--vscode-input-border);
-    }
-    
-    .back-content .morphemes {
-      font-size: 1em;
-      margin-bottom: 12px;
     }
     
     .translation {
@@ -523,9 +551,11 @@ export class FlashcardPanel {
     <div class="card" id="card-view">
       <div class="term-container">
         <div class="term" id="term"></div>
-        <button class="btn-speak" onclick="speakTerm()" title="Pronounce term">🔊</button>
       </div>
-      <div class="phonetic" id="phonetic"></div>
+      <div class="phonetic-container" id="phonetic-container">
+        <div class="phonetic" id="phonetic"></div>
+        <button class="btn-speak btn-speak-small" onclick="speakTerm()" title="Pronounce term">🔊</button>
+      </div>
       <div class="morphemes" id="morphemes"></div>
       <div class="example-container" id="example-container">
         <div class="example" id="example"></div>
@@ -537,7 +567,6 @@ export class FlashcardPanel {
       </div>
       
       <div id="back-content" class="back-content hidden">
-        <div class="morphemes" id="morphemes-back"></div>
         <div class="translation" id="translation"></div>
         <div class="example-cn" id="example-cn"></div>
         <div class="explanation" id="explanation"></div>
@@ -577,6 +606,7 @@ export class FlashcardPanel {
     // Listen for messages from extension
     window.addEventListener('message', event => {
       const message = event.data;
+      console.log('[WordSlash UI] Received message:', message.type);
       
       switch (message.type) {
         case 'tts_settings':
@@ -584,6 +614,7 @@ export class FlashcardPanel {
           console.log('[WordSlash] TTS settings:', ttsSettings);
           break;
         case 'card':
+          console.log('[WordSlash UI] Displaying card:', message.card.front.term);
           showCard(message.card, message.srs);
           break;
         case 'empty':
@@ -603,8 +634,16 @@ export class FlashcardPanel {
       
       // Show front
       document.getElementById('term').textContent = card.front.term;
-      document.getElementById('phonetic').textContent = card.front.phonetic || '';
-      document.getElementById('phonetic').classList.toggle('hidden', !card.front.phonetic);
+      
+      // Show phonetic with container
+      const phoneticContainer = document.getElementById('phonetic-container');
+      const phoneticEl = document.getElementById('phonetic');
+      if (card.front.phonetic) {
+        phoneticEl.textContent = card.front.phonetic;
+        phoneticContainer.classList.remove('hidden');
+      } else {
+        phoneticContainer.classList.add('hidden');
+      }
       
       // Show morphemes on front
       const morphemesEl = document.getElementById('morphemes');
@@ -629,17 +668,6 @@ export class FlashcardPanel {
       
       // Prepare back (including example Chinese translation)
       const back = card.back || {};
-      
-      // Show morphemes on back
-      const morphemesBackEl = document.getElementById('morphemes-back');
-      if (card.front.morphemes && card.front.morphemes.length > 0) {
-        morphemesBackEl.innerHTML = card.front.morphemes
-          .map(m => '<span class="morpheme">' + m + '</span>')
-          .join('<span class="separator">+</span>');
-        morphemesBackEl.classList.remove('hidden');
-      } else {
-        morphemesBackEl.classList.add('hidden');
-      }
       
       document.getElementById('translation').textContent = back.translation || '(no translation)';
       
@@ -846,6 +874,11 @@ export class FlashcardPanel {
       document.getElementById('back-content').classList.remove('hidden');
       document.getElementById('back-buttons').classList.remove('hidden');
       
+      // Auto-pronounce when revealing back (if enabled)
+      if (ttsSettings.autoPlay) {
+        speak();
+      }
+      
       vscode.postMessage({ type: 'reveal_back', cardId: currentCard.id });
     }
     
@@ -861,6 +894,7 @@ export class FlashcardPanel {
     }
     
     function refresh() {
+      console.log('[WordSlash UI] Refresh button clicked');
       vscode.postMessage({ type: 'refresh' });
     }
     

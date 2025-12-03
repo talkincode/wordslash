@@ -105,6 +105,7 @@ export function isValidUiMessage(msg: unknown): msg is UiToExtensionMessage {
     case 'start_flashcard_study':
     case 'open_settings':
     case 'get_tts_settings':
+    case 'refresh':
       return true;
 
     case 'get_knowledge_graph':

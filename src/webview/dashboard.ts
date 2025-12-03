@@ -192,7 +192,7 @@ export class DashboardPanel {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline';">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; media-src https://dict.youdao.com https://translate.google.com;">
   <title>WordSlash Dashboard</title>
   <style>
     :root {
@@ -1462,6 +1462,10 @@ export class DashboardPanel {
     
     // Show card details in modal
     function showCardDetails(card, srs) {
+      // Update current card for audio playback
+      currentCard = card;
+      console.log('[WordSlash Dashboard] showCardDetails - currentCard set to:', currentCard?.front?.term);
+      
       const modal = document.getElementById('cardModal');
       const term = document.getElementById('modalTerm');
       const phonetic = document.getElementById('modalPhonetic');
@@ -1475,6 +1479,7 @@ export class DashboardPanel {
       
       // Enable/disable audio button
       playBtn.disabled = !card.front.term;
+      console.log('[WordSlash Dashboard] Audio button enabled:', !playBtn.disabled);
       
       // Build modal body
       let bodyHTML = '';
@@ -1713,7 +1718,11 @@ export class DashboardPanel {
     
     // Play audio using configured TTS engine
     async function playAudio() {
-      if (!currentCard || !currentCard.front.term) return;
+      console.log('[WordSlash Dashboard] playAudio called, currentCard:', currentCard);
+      if (!currentCard || !currentCard.front.term) {
+        console.error('[WordSlash Dashboard] Cannot play audio: currentCard is', currentCard);
+        return;
+      }
       
       const playBtn = document.getElementById('playAudioBtn');
       playBtn.disabled = true;

@@ -90,6 +90,21 @@ export function calculatePriority(
 ): number {
   let priority = 0;
   
+  // Special case: Learning cards (just reviewed 1-2 times, still fresh)
+  // Give them medium-high priority for repetition in the same session
+  if (srs.reps > 0 && srs.reps <= 2 && srs.intervalDays <= 1) {
+    const timeSinceReview = now - (srs.lastReviewAt || srs.dueAt - srs.intervalDays * DAY_MS);
+    const minutesSinceReview = timeSinceReview / 60000;
+    
+    // If reviewed within last 30 minutes, give it medium priority (40-60)
+    // This allows for spaced repetition within the same study session
+    if (minutesSinceReview < 30) {
+      priority += 40 + (30 - minutesSinceReview); // 40-70 points
+    } else {
+      priority += 35; // Base priority for learning cards
+    }
+  }
+  
   // 1. Overdue factor (0-100 points)
   // Cards past due get high priority
   const overdueMs = now - srs.dueAt;
@@ -198,13 +213,14 @@ export function getNextCard(
   if (loopMode && index.cards.size > 0) {
     const scoredAllCards: ScoredCard[] = [];
     
-    for (const cardId of index.dueCards) {
+    // Include all cards (both due and not yet due)
+    for (const [cardId, card] of index.cards) {
       if (excludeCardId && cardId === excludeCardId) continue;
       
-      const card = index.cards.get(cardId);
       const srs = index.srsStates.get(cardId);
       
-      if (card && srs && srs.reps > 0) {
+      // Include all cards that have been reviewed at least once
+      if (srs && srs.reps > 0) {
         scoredAllCards.push({
           card,
           srs,
