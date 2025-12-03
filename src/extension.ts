@@ -20,10 +20,7 @@ export function activate(context: vscode.ExtensionContext) {
   // Register sidebar view provider
   const dashboardViewProvider = new DashboardViewProvider(context.extensionUri, storage);
   context.subscriptions.push(
-    vscode.window.registerWebviewViewProvider(
-      DashboardViewProvider.viewType,
-      dashboardViewProvider
-    )
+    vscode.window.registerWebviewViewProvider(DashboardViewProvider.viewType, dashboardViewProvider)
   );
 
   // Register commands
@@ -58,14 +55,11 @@ export function activate(context: vscode.ExtensionContext) {
   });
 
   // Bulk import command
-  const importBulkCommand = vscode.commands.registerCommand(
-    'wordslash.importBulk',
-    async () => {
-      if (storage) {
-        await executeImportBulk(storage);
-      }
+  const importBulkCommand = vscode.commands.registerCommand('wordslash.importBulk', async () => {
+    if (storage) {
+      await executeImportBulk(storage);
     }
-  );
+  });
 
   // Export template command
   const exportTemplateCommand = vscode.commands.registerCommand(
@@ -87,12 +81,9 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   // Open settings command
-  const openSettingsCommand = vscode.commands.registerCommand(
-    'wordslash.openSettings',
-    () => {
-      vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash');
-    }
-  );
+  const openSettingsCommand = vscode.commands.registerCommand('wordslash.openSettings', () => {
+    vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash');
+  });
 
   context.subscriptions.push(
     openFlashcardsCommand,

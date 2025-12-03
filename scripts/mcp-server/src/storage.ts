@@ -141,6 +141,7 @@ export class Storage {
       front: {
         term: input.term.trim(),
         phonetic: input.phonetic?.trim(),
+        morphemes: input.morphemes?.map(m => m.trim()).filter(Boolean),
         example: input.example?.trim(),
         exampleCn: input.exampleCn?.trim(),
       },
@@ -177,6 +178,7 @@ export class Storage {
       front: {
         ...existing.front,
         phonetic: updates.phonetic?.trim() ?? existing.front.phonetic,
+        morphemes: updates.morphemes?.map(m => m.trim()).filter(Boolean) ?? existing.front.morphemes,
         example: updates.example?.trim() ?? existing.front.example,
         exampleCn: updates.exampleCn?.trim() ?? existing.front.exampleCn,
       },

@@ -128,6 +128,7 @@ const tools: Tool[] = [
           description: 'Card ID to update (required)',
         },
         phonetic: { type: 'string' },
+        morphemes: { type: 'array', items: { type: 'string' } },
         example: { type: 'string' },
         exampleCn: { type: 'string' },
         translation: { type: 'string' },

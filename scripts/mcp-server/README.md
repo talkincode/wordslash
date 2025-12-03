@@ -2,6 +2,21 @@
 
 MCP (Model Context Protocol) Server for managing WordSlash vocabulary data. Provides stdio-based tools for reading, creating, updating, and deleting vocabulary cards.
 
+## What's New in v0.2.0
+
+✨ **Morpheme Segmentation**: Break down words into meaningful parts
+- Add morphemes when creating cards: `morphemes: ["ephe", "meral"]`
+- Update existing cards with morpheme breakdown
+- Perfect for learning word roots and prefixes/suffixes
+
+📊 **Dashboard Statistics**: Get comprehensive learning analytics
+- Card counts, review stats, retention rate
+- Learning streaks and progress tracking
+
+🕸️ **Knowledge Graph**: Visualize vocabulary relationships
+- See connections through synonyms, antonyms, and tags
+- Interactive graph generation with filtering options
+
 ## Installation
 
 ```bash
@@ -80,7 +95,17 @@ npm run dev
 
 ## Examples
 
-### Create a card
+### Create a card with morphemes
+
+```
+Use create_card to add "ephemeral" with:
+- phonetic: /ɪˈfem.ər.əl/
+- morphemes: ["ephe", "meral"]
+- translation: "短暂的"
+- example: "Fame is ephemeral."
+```
+
+### Create a simple card
 
 ```
 Use create_card to add "ephemeral" with translation "短暂的" and example "Fame is ephemeral."
@@ -92,7 +117,13 @@ Use create_card to add "ephemeral" with translation "短暂的" and example "Fam
 Use list_cards to find cards with tag "GRE"
 ```
 
-### Update a card
+### Update a card with morphemes
+
+```
+Use update_card to add morphemes ["trans", "ient"] and synonyms ["ephemeral", "fleeting"] to card id "xxx"
+```
+
+### Update card synonyms
 
 ```
 Use update_card to add synonyms ["transient", "fleeting"] to card id "xxx"

@@ -7,11 +7,7 @@ import { buildIndex } from '../storage/indexer';
 import { calculateNextState } from '../srs/sm2';
 import { getNextCard } from '../srs/scheduler';
 import { createReviewEvent, type Card, type ReviewRating } from '../storage/schema';
-import {
-  isValidUiMessage,
-  type ExtensionToUiMessage,
-  type UiToExtensionMessage,
-} from './protocol';
+import { isValidUiMessage, type ExtensionToUiMessage, type UiToExtensionMessage } from './protocol';
 
 export class FlashcardPanel {
   public static currentPanel: FlashcardPanel | undefined;
@@ -24,11 +20,7 @@ export class FlashcardPanel {
   private _recentCardIds: string[] = []; // Track recently reviewed cards
   private static readonly MAX_RECENT_CARDS = 5; // Keep last 5 cards in memory
 
-  private constructor(
-    panel: vscode.WebviewPanel,
-    extensionUri: vscode.Uri,
-    storage: JsonlStorage
-  ) {
+  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, storage: JsonlStorage) {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._storage = storage;
@@ -140,13 +132,13 @@ export class FlashcardPanel {
         azureKey: config.get('azureKey', ''),
         azureRegion: config.get('azureRegion', 'eastus'),
         openaiKey: config.get('openaiKey', ''),
-      }
+      },
     });
   }
 
   private _addToRecentCards(cardId: string) {
     // Remove if already in list
-    this._recentCardIds = this._recentCardIds.filter(id => id !== cardId);
+    this._recentCardIds = this._recentCardIds.filter((id) => id !== cardId);
     // Add to front
     this._recentCardIds.unshift(cardId);
     // Keep only last N cards
@@ -159,11 +151,11 @@ export class FlashcardPanel {
     try {
       const cards = await this._storage.readAllCards();
       const events = await this._storage.readAllEvents();
-      
+
       console.log('[WordSlash] Cards loaded:', cards.length);
       console.log('[WordSlash] Events loaded:', events.length);
       console.log('[WordSlash] Recent cards:', this._recentCardIds);
-      
+
       const index = buildIndex(cards, events);
       const now = Date.now();
 
@@ -174,7 +166,7 @@ export class FlashcardPanel {
         excludeCardId: this._currentCard?.id,
         recentCardIds: this._recentCardIds,
       });
-      
+
       console.log('[WordSlash] Next card:', card?.id ?? 'none');
 
       // Track current card as recently seen
@@ -274,8 +266,8 @@ export class FlashcardPanel {
       background-color: var(--vscode-input-background);
       border: 2px solid var(--vscode-input-border);
       border-radius: 12px;
-      padding: 32px 48px;
-      max-width: 800px;
+      padding: 40px 60px;
+      max-width: 1000px;
       width: 100%;
       text-align: center;
     }
@@ -285,71 +277,144 @@ export class FlashcardPanel {
       align-items: center;
       justify-content: center;
       gap: 16px;
-      margin-bottom: 12px;
+      margin-bottom: 16px;
     }
     
     .term {
-      font-size: 3em;
+      font-size: 3.2em;
       font-weight: 700;
       color: var(--vscode-textLink-foreground);
       letter-spacing: 0.02em;
+      font-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
     }
     
     .btn-speak {
       background: transparent;
-      border: 2px solid var(--vscode-textLink-foreground);
+      border: 3px solid var(--vscode-textLink-foreground);
       color: var(--vscode-textLink-foreground);
-      width: 40px;
-      height: 40px;
+      width: 48px;
+      height: 48px;
       border-radius: 50%;
       cursor: pointer;
-      font-size: 20px;
-      display: flex;
+      font-size: 22px;
+      display: inline-flex;
       align-items: center;
       justify-content: center;
       transition: all 0.2s;
       padding: 0;
+      flex-shrink: 0;
     }
     
     .btn-speak:hover {
-      background: var(--vscode-textLink-foreground);
-      color: var(--vscode-editor-background);
+      background: rgba(0, 122, 204, 0.15);
+      transform: scale(1.08);
+    }
+    
+    .btn-speak-small {
+      width: 36px;
+      height: 36px;
+      font-size: 16px;
+      border-width: 2px;
     }
     
     .phonetic {
-      font-size: 1.2em;
+      font-size: 1.3em;
       color: var(--vscode-descriptionForeground);
-      margin-bottom: 16px;
+      margin-bottom: 20px;
       font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif;
     }
     
-    .example {
-      font-size: 1.2em;
-      line-height: 1.5;
+    .morphemes {
+      font-size: 1.1em;
+      color: var(--vscode-textLink-foreground);
+      font-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      margin-top: 8px;
+      margin-bottom: 16px;
+      letter-spacing: 0.05em;
+    }
+    
+    .morphemes .separator {
       color: var(--vscode-descriptionForeground);
-      font-style: italic;
-      margin-bottom: 20px;
-      padding: 12px 16px;
+      margin: 0 6px;
+      font-weight: normal;
+    }
+    
+    .morphemes .morpheme {
+      font-weight: 600;
+    }
+    
+    .example-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 12px;
+      padding: 20px 24px;
       background-color: var(--vscode-textBlockQuote-background);
-      border-radius: 6px;
+      border-radius: 8px;
+    }
+    
+    .example {
+      font-size: 1.6em;
+      line-height: 1.7;
+      color: var(--vscode-editor-foreground);
+      font-style: italic;
+    }
+    
+    .example-cn {
+      font-size: 1.4em;
+      line-height: 1.6;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 24px;
+      padding: 10px 24px;
     }
     
     .back-content {
-      margin-top: 20px;
-      padding-top: 20px;
-      border-top: 1px solid var(--vscode-input-border);
+      margin-top: 24px;
+      padding-top: 24px;
+      border-top: 2px solid var(--vscode-input-border);
+    }
+    
+    .back-content .morphemes {
+      font-size: 1em;
+      margin-bottom: 12px;
     }
     
     .translation {
-      font-size: 1.8em;
-      margin-bottom: 12px;
+      font-size: 2.2em;
+      margin-bottom: 16px;
       font-weight: 600;
     }
     
     .explanation {
-      font-size: 1.1em;
+      font-size: 1.3em;
+      line-height: 1.6;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 10px;
+    }
+    
+    .explanation-cn {
+      font-size: 1.2em;
       line-height: 1.5;
       color: var(--vscode-descriptionForeground);
+      opacity: 0.85;
+      margin-bottom: 16px;
+    }
+    
+    .synonyms, .antonyms {
+      font-size: 0.95em;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 8px;
+    }
+    
+    .synonyms span, .antonyms span {
+      display: inline-block;
+      background: var(--vscode-badge-background);
+      color: var(--vscode-badge-foreground);
+      padding: 2px 8px;
+      border-radius: 4px;
+      margin: 2px 4px;
+      font-size: 0.9em;
     }
     
     .buttons {
@@ -458,18 +523,27 @@ export class FlashcardPanel {
     <div class="card" id="card-view">
       <div class="term-container">
         <div class="term" id="term"></div>
-        <button class="btn-speak" onclick="speak()" title="Pronounce">🔊</button>
+        <button class="btn-speak" onclick="speakTerm()" title="Pronounce term">🔊</button>
       </div>
       <div class="phonetic" id="phonetic"></div>
-      <div class="example" id="example"></div>
+      <div class="morphemes" id="morphemes"></div>
+      <div class="example-container" id="example-container">
+        <div class="example" id="example"></div>
+        <button class="btn-speak btn-speak-small" onclick="speakExample()" title="Pronounce example">🔊</button>
+      </div>
       
       <div id="front-buttons" class="buttons">
         <button class="btn-reveal" onclick="revealBack()">Show Answer</button>
       </div>
       
       <div id="back-content" class="back-content hidden">
+        <div class="morphemes" id="morphemes-back"></div>
         <div class="translation" id="translation"></div>
+        <div class="example-cn" id="example-cn"></div>
         <div class="explanation" id="explanation"></div>
+        <div class="explanation-cn" id="explanation-cn"></div>
+        <div class="synonyms" id="synonyms"></div>
+        <div class="antonyms" id="antonyms"></div>
       </div>
       
       <div id="back-buttons" class="buttons hidden">
@@ -531,14 +605,70 @@ export class FlashcardPanel {
       document.getElementById('term').textContent = card.front.term;
       document.getElementById('phonetic').textContent = card.front.phonetic || '';
       document.getElementById('phonetic').classList.toggle('hidden', !card.front.phonetic);
-      document.getElementById('example').textContent = card.front.example || '';
-      document.getElementById('example').classList.toggle('hidden', !card.front.example);
       
-      // Prepare back
+      // Show morphemes on front
+      const morphemesEl = document.getElementById('morphemes');
+      if (card.front.morphemes && card.front.morphemes.length > 0) {
+        morphemesEl.innerHTML = card.front.morphemes
+          .map(m => '<span class="morpheme">' + m + '</span>')
+          .join('<span class="separator">+</span>');
+        morphemesEl.classList.remove('hidden');
+      } else {
+        morphemesEl.classList.add('hidden');
+      }
+      
+      // Handle example with speak button
+      const exampleContainer = document.getElementById('example-container');
+      const exampleEl = document.getElementById('example');
+      if (card.front.example) {
+        exampleEl.textContent = card.front.example;
+        exampleContainer.classList.remove('hidden');
+      } else {
+        exampleContainer.classList.add('hidden');
+      }
+      
+      // Prepare back (including example Chinese translation)
       const back = card.back || {};
+      
+      // Show morphemes on back
+      const morphemesBackEl = document.getElementById('morphemes-back');
+      if (card.front.morphemes && card.front.morphemes.length > 0) {
+        morphemesBackEl.innerHTML = card.front.morphemes
+          .map(m => '<span class="morpheme">' + m + '</span>')
+          .join('<span class="separator">+</span>');
+        morphemesBackEl.classList.remove('hidden');
+      } else {
+        morphemesBackEl.classList.add('hidden');
+      }
+      
       document.getElementById('translation').textContent = back.translation || '(no translation)';
+      
+      // Example Chinese goes to back
+      document.getElementById('example-cn').textContent = card.front.exampleCn || '';
+      document.getElementById('example-cn').classList.toggle('hidden', !card.front.exampleCn);
+      
       document.getElementById('explanation').textContent = back.explanation || '';
       document.getElementById('explanation').classList.toggle('hidden', !back.explanation);
+      document.getElementById('explanation-cn').textContent = back.explanationCn || '';
+      document.getElementById('explanation-cn').classList.toggle('hidden', !back.explanationCn);
+      
+      // Show synonyms
+      const synonymsEl = document.getElementById('synonyms');
+      if (back.synonyms && back.synonyms.length > 0) {
+        synonymsEl.innerHTML = '同义词: ' + back.synonyms.map(s => '<span>' + s + '</span>').join('');
+        synonymsEl.classList.remove('hidden');
+      } else {
+        synonymsEl.classList.add('hidden');
+      }
+      
+      // Show antonyms
+      const antonymsEl = document.getElementById('antonyms');
+      if (back.antonyms && back.antonyms.length > 0) {
+        antonymsEl.innerHTML = '反义词: ' + back.antonyms.map(s => '<span>' + s + '</span>').join('');
+        antonymsEl.classList.remove('hidden');
+      } else {
+        antonymsEl.classList.add('hidden');
+      }
       
       // Reset to front view
       document.getElementById('front-buttons').classList.remove('hidden');
@@ -630,24 +760,23 @@ export class FlashcardPanel {
     /**
      * Play pronunciation based on TTS settings
      */
-    async function speak() {
-      if (!currentCard) return;
+    async function speakText(text) {
+      if (!text) return;
       
-      const term = currentCard.front.term;
       const engine = ttsSettings.engine;
       
-      console.log('[WordSlash] Speaking with engine:', engine);
+      console.log('[WordSlash] Speaking with engine:', engine, 'text:', text);
       
       // For browser engine, use Web Speech API directly
       if (engine === 'browser') {
-        speakWithTTS(term);
+        speakWithTTS(text);
         return;
       }
       
       // For online engines (youdao, google)
       if (engine === 'youdao' || engine === 'google') {
         try {
-          const audioUrl = getAudioUrl(term, engine);
+          const audioUrl = getAudioUrl(text, engine);
           
           if (!audioPlayer) {
             audioPlayer = new Audio();
@@ -657,11 +786,11 @@ export class FlashcardPanel {
           audioPlayer.playbackRate = ttsSettings.rate;
           
           await audioPlayer.play();
-          console.log('[WordSlash] Playing', engine, 'audio for:', term);
+          console.log('[WordSlash] Playing', engine, 'audio for:', text);
           return;
         } catch (error) {
           console.log('[WordSlash]', engine, 'audio failed, falling back to browser TTS:', error.message);
-          speakWithTTS(term);
+          speakWithTTS(text);
         }
         return;
       }
@@ -669,12 +798,27 @@ export class FlashcardPanel {
       // For premium engines (azure, openai) - TODO: implement
       if (engine === 'azure' || engine === 'openai') {
         console.log('[WordSlash] Premium TTS not yet implemented, using browser TTS');
-        speakWithTTS(term);
+        speakWithTTS(text);
         return;
       }
       
       // Default fallback
-      speakWithTTS(term);
+      speakWithTTS(text);
+    }
+    
+    function speak() {
+      if (!currentCard) return;
+      speakText(currentCard.front.term);
+    }
+    
+    function speakTerm() {
+      if (!currentCard) return;
+      speakText(currentCard.front.term);
+    }
+    
+    function speakExample() {
+      if (!currentCard || !currentCard.front.example) return;
+      speakText(currentCard.front.example);
     }
     
     /**

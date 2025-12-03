@@ -14,6 +14,7 @@ export interface CardContext {
 export interface CardFront {
   term: string;
   phonetic?: string;
+  morphemes?: string[];
   example?: string;
   exampleCn?: string;
   context?: CardContext;
@@ -72,6 +73,7 @@ export interface CreateCardInput {
   type?: CardType;
   term: string;
   phonetic?: string;
+  morphemes?: string[];
   example?: string;
   exampleCn?: string;
   translation?: string;
@@ -85,6 +87,7 @@ export interface CreateCardInput {
 
 export interface UpdateCardInput {
   phonetic?: string;
+  morphemes?: string[];
   example?: string;
   exampleCn?: string;
   translation?: string;

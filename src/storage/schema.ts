@@ -17,6 +17,8 @@ export interface CardContext {
 export interface CardFront {
   term: string;
   phonetic?: string;
+  /** Morpheme segmentation: e.g., ['ephe', 'meral'] for 'ephemeral' */
+  morphemes?: string[];
   example?: string;
   /** Chinese translation of example sentence */
   exampleCn?: string;

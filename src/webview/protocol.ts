@@ -1,7 +1,13 @@
 // Webview protocol - Message type definitions
 // PURE MODULE: No vscode imports allowed
 
-import type { Card, ReviewRating, SrsState, DashboardStats, KnowledgeGraph } from '../storage/schema';
+import type {
+  Card,
+  ReviewRating,
+  SrsState,
+  DashboardStats,
+  KnowledgeGraph,
+} from '../storage/schema';
 
 // UI → Extension messages
 export type UiReadyMessage = { type: 'ui_ready' };
@@ -17,12 +23,13 @@ export type NextMessage = { type: 'next' };
 
 // Dashboard messages
 export type GetDashboardStatsMessage = { type: 'get_dashboard_stats' };
-export type GetKnowledgeGraphMessage = { 
+export type GetKnowledgeGraphMessage = {
   type: 'get_knowledge_graph';
   maxNodes?: number;
   includeOrphans?: boolean;
   filterTag?: string;
 };
+export type GetCardDetailsMessage = { type: 'get_card_details'; cardId: string };
 export type StartFlashcardStudyMessage = { type: 'start_flashcard_study' };
 export type OpenSettingsMessage = { type: 'open_settings' };
 export type GetTtsSettingsMessage = { type: 'get_tts_settings' };
@@ -36,6 +43,7 @@ export type UiToExtensionMessage =
   | NextMessage
   | GetDashboardStatsMessage
   | GetKnowledgeGraphMessage
+  | GetCardDetailsMessage
   | StartFlashcardStudyMessage
   | OpenSettingsMessage
   | GetTtsSettingsMessage
@@ -57,8 +65,9 @@ export type StatsMessage = {
 // Dashboard messages
 export type DashboardStatsMessage = { type: 'dashboard_stats'; stats: DashboardStats };
 export type KnowledgeGraphMessage = { type: 'knowledge_graph'; graph: KnowledgeGraph };
-export type TtsSettingsMessage = { 
-  type: 'tts_settings'; 
+export type CardDetailsMessage = { type: 'card_details'; card: Card; srs?: SrsState };
+export type TtsSettingsMessage = {
+  type: 'tts_settings';
   settings: {
     engine: string;
     rate: number;
@@ -69,12 +78,13 @@ export type TtsSettingsMessage = {
   };
 };
 
-export type ExtensionToUiMessage = 
-  | CardMessage 
-  | EmptyMessage 
+export type ExtensionToUiMessage =
+  | CardMessage
+  | EmptyMessage
   | ErrorMessage
   | DashboardStatsMessage
   | KnowledgeGraphMessage
+  | CardDetailsMessage
   | TtsSettingsMessage;
 
 /**
@@ -100,6 +110,9 @@ export function isValidUiMessage(msg: unknown): msg is UiToExtensionMessage {
     case 'get_knowledge_graph':
       // Optional parameters are validated loosely
       return true;
+
+    case 'get_card_details':
+      return typeof m.cardId === 'string';
 
     case 'rate_card':
       return (
