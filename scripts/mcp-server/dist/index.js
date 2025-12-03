@@ -148,6 +148,33 @@ const tools = [
         },
     },
     {
+        name: 'delete_cards_batch',
+        description: 'Delete multiple vocabulary cards at once (soft delete). Supports deleting by IDs, search term, or tag.',
+        inputSchema: {
+            type: 'object',
+            properties: {
+                ids: {
+                    type: 'array',
+                    items: { type: 'string' },
+                    description: 'Array of card IDs to delete',
+                },
+                search: {
+                    type: 'string',
+                    description: 'Delete all cards matching this search term',
+                },
+                tag: {
+                    type: 'string',
+                    description: 'Delete all cards with this tag',
+                },
+                confirm: {
+                    type: 'boolean',
+                    description: 'Must be true to confirm deletion (safety check)',
+                },
+            },
+            required: ['confirm'],
+        },
+    },
+    {
         name: 'list_events',
         description: 'List review events (learning history). Events are read-only.',
         inputSchema: {
@@ -334,6 +361,79 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 }
                 return {
                     content: [{ type: 'text', text: `Card ${id} deleted successfully` }],
+                };
+            }
+            case 'delete_cards_batch': {
+                const { ids, search, tag, confirm } = (args || {});
+                if (!confirm) {
+                    return {
+                        content: [{ type: 'text', text: 'Error: confirm must be true to delete cards' }],
+                        isError: true,
+                    };
+                }
+                if (!ids && !search && !tag) {
+                    return {
+                        content: [{ type: 'text', text: 'Error: provide ids, search, or tag to specify cards to delete' }],
+                        isError: true,
+                    };
+                }
+                const cards = await storage.getCards();
+                let toDelete = [];
+                if (ids && ids.length > 0) {
+                    // Delete by IDs
+                    toDelete = ids.filter(id => cards.has(id));
+                }
+                else {
+                    // Find cards matching search or tag
+                    for (const [cardId, card] of cards) {
+                        let match = false;
+                        if (search) {
+                            const searchLower = search.toLowerCase();
+                            match = card.front.term.toLowerCase().includes(searchLower) ||
+                                card.back?.translation?.toLowerCase().includes(searchLower) || false;
+                        }
+                        if (tag) {
+                            match = card.tags?.includes(tag) || false;
+                        }
+                        if (match) {
+                            toDelete.push(cardId);
+                        }
+                    }
+                }
+                if (toDelete.length === 0) {
+                    return {
+                        content: [{ type: 'text', text: 'No matching cards found to delete' }],
+                    };
+                }
+                // Delete all matching cards
+                let deleted = 0;
+                const errors = [];
+                for (const cardId of toDelete) {
+                    try {
+                        const success = await storage.deleteCard(cardId);
+                        if (success) {
+                            deleted++;
+                        }
+                        else {
+                            errors.push(`Card ${cardId} not found`);
+                        }
+                    }
+                    catch (err) {
+                        errors.push(`Failed to delete ${cardId}: ${err}`);
+                    }
+                }
+                const result = {
+                    deleted,
+                    total: toDelete.length,
+                    errors: errors.length > 0 ? errors : undefined,
+                };
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: `Batch delete completed:\n${JSON.stringify(result, null, 2)}`,
+                        },
+                    ],
                 };
             }
             case 'list_events': {

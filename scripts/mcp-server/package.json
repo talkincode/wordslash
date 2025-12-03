@@ -1,11 +1,11 @@
 {
   "name": "wordslash-mcp",
-  "version": "0.1.0",
+  "version": "0.1.3",
   "description": "MCP Server for WordSlash vocabulary data management",
   "type": "module",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
   "bin": {
-    "wordslash-mcp": "./dist/index.js"
+    "wordslash-mcp": "dist/index.js"
   },
   "files": [
     "dist"
@@ -19,7 +19,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/talkincode/wordslash.git"
+    "url": "git+https://github.com/talkincode/wordslash.git"
   },
   "homepage": "https://github.com/talkincode/wordslash/tree/main/scripts/mcp-server",
   "bugs": {
