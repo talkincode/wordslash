@@ -110,6 +110,10 @@ export class FlashcardPanel {
     try {
       const cards = await this._storage.readAllCards();
       const events = await this._storage.readAllEvents();
+      
+      console.log('[WordSlash] Cards loaded:', cards.length);
+      console.log('[WordSlash] Events loaded:', events.length);
+      
       const index = buildIndex(cards, events);
 
       const now = Date.now();
@@ -117,6 +121,9 @@ export class FlashcardPanel {
       // Priority: due cards first, then new cards
       const dueCards = getDueCards(index, now);
       const newCards = getNewCards(index);
+      
+      console.log('[WordSlash] Due cards:', dueCards.length);
+      console.log('[WordSlash] New cards:', newCards.length);
 
       let card: Card | null = null;
       let srs = undefined;
@@ -140,6 +147,7 @@ export class FlashcardPanel {
         });
       }
     } catch (error) {
+      console.error('[WordSlash] Error:', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       this._postMessage({ type: 'error', message });
     }
@@ -212,67 +220,71 @@ export class FlashcardPanel {
       align-items: center;
       justify-content: center;
       min-height: 100vh;
-      padding: 20px;
+      padding: 60px;
     }
     
     .card {
       background-color: var(--vscode-input-background);
-      border: 1px solid var(--vscode-input-border);
-      border-radius: 8px;
-      padding: 32px;
-      max-width: 500px;
+      border: 2px solid var(--vscode-input-border);
+      border-radius: 16px;
+      padding: 64px 72px;
+      max-width: 900px;
       width: 100%;
       text-align: center;
     }
     
     .term {
-      font-size: 2em;
-      font-weight: 600;
-      margin-bottom: 16px;
+      font-size: 4.5em;
+      font-weight: 700;
+      margin-bottom: 32px;
       color: var(--vscode-textLink-foreground);
+      letter-spacing: 0.02em;
     }
     
     .example {
-      font-size: 0.9em;
+      font-size: 1.8em;
+      line-height: 1.7;
       color: var(--vscode-descriptionForeground);
       font-style: italic;
-      margin-bottom: 24px;
-      padding: 12px;
+      margin-bottom: 40px;
+      padding: 24px 28px;
       background-color: var(--vscode-textBlockQuote-background);
-      border-radius: 4px;
+      border-radius: 8px;
     }
     
     .back-content {
-      margin-top: 24px;
-      padding-top: 24px;
-      border-top: 1px solid var(--vscode-input-border);
+      margin-top: 40px;
+      padding-top: 40px;
+      border-top: 2px solid var(--vscode-input-border);
     }
     
     .translation {
-      font-size: 1.4em;
-      margin-bottom: 12px;
+      font-size: 2.8em;
+      margin-bottom: 24px;
+      font-weight: 600;
     }
     
     .explanation {
-      font-size: 0.95em;
+      font-size: 1.6em;
+      line-height: 1.6;
       color: var(--vscode-descriptionForeground);
     }
     
     .buttons {
       display: flex;
-      gap: 8px;
+      gap: 16px;
       justify-content: center;
-      margin-top: 24px;
+      margin-top: 48px;
       flex-wrap: wrap;
     }
     
     button {
-      padding: 8px 20px;
+      padding: 18px 40px;
       border: none;
-      border-radius: 4px;
+      border-radius: 8px;
       cursor: pointer;
-      font-size: 14px;
-      font-weight: 500;
+      font-size: 22px;
+      font-weight: 600;
       transition: opacity 0.2s;
     }
     
@@ -303,17 +315,22 @@ export class FlashcardPanel {
     .btn-reveal {
       background-color: var(--vscode-button-background);
       color: var(--vscode-button-foreground);
-      padding: 12px 32px;
-      font-size: 16px;
+      padding: 20px 60px;
+      font-size: 24px;
     }
     
     .empty-state {
       text-align: center;
-      padding: 40px;
+      padding: 80px;
     }
     
     .empty-state h2 {
-      margin-bottom: 16px;
+      font-size: 5em;
+      margin-bottom: 32px;
+    }
+    
+    .empty-state p {
+      font-size: 2em;
     }
     
     .hidden {
@@ -321,9 +338,9 @@ export class FlashcardPanel {
     }
     
     .context-info {
-      font-size: 0.75em;
+      font-size: 1.2em;
       color: var(--vscode-descriptionForeground);
-      margin-top: 8px;
+      margin-top: 16px;
     }
   </style>
 </head>

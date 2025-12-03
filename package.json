@@ -37,12 +37,6 @@
       }
     ],
     "menus": {
-      "commandPalette": [
-        {
-          "command": "wordslash.dev.generateSampleData",
-          "when": "isExtensionDevelopmentHost"
-        }
-      ],
       "editor/context": [
         {
           "command": "wordslash.addCardFromSelection",
