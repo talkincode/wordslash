@@ -18,12 +18,14 @@ export function getDefaultStoragePath(): string {
   const platform = os.platform();
   const home = os.homedir();
 
+  // The path format is: globalStorage/<publisher>.<extension-name>
+  // Publisher: TeraTeams, Extension: wordslash
   if (platform === 'darwin') {
-    return path.join(home, 'Library/Application Support/Code/User/globalStorage/wordslash.wordslash');
+    return path.join(home, 'Library/Application Support/Code/User/globalStorage/terateams.wordslash');
   } else if (platform === 'win32') {
-    return path.join(process.env.APPDATA || home, 'Code/User/globalStorage/wordslash.wordslash');
+    return path.join(process.env.APPDATA || home, 'Code/User/globalStorage/terateams.wordslash');
   } else {
-    return path.join(home, '.config/Code/User/globalStorage/wordslash.wordslash');
+    return path.join(home, '.config/Code/User/globalStorage/terateams.wordslash');
   }
 }
 
