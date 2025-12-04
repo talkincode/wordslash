@@ -4,9 +4,7 @@
 import * as fs from 'fs/promises';
 import * as path from 'path';
 import type { Card, ReviewEvent } from './schema';
-
-const CARDS_FILE = 'cards.jsonl';
-const EVENTS_FILE = 'events.jsonl';
+import { CARDS_FILE, EVENTS_FILE } from '../common/constants';
 
 /**
  * JSONL-based storage with atomic writes and concurrent-safe appends
@@ -46,24 +44,29 @@ export class JsonlStorage {
 
   /**
    * Atomically write JSON to a file using temp file + rename
+   * Now with write lock protection to prevent concurrent writes
    */
   async atomicWriteJson<T>(filename: string, data: T): Promise<void> {
-    await this.ensureDir();
-    const filePath = path.join(this.basePath, filename);
-    const tempPath = `${filePath}.${Date.now()}.tmp`;
+    // Queue this write after any pending writes
+    this.writeLock = this.writeLock.then(async () => {
+      await this.ensureDir();
+      const filePath = path.join(this.basePath, filename);
+      const tempPath = `${filePath}.${Date.now()}.tmp`;
 
-    try {
-      await fs.writeFile(tempPath, JSON.stringify(data, null, 2), 'utf-8');
-      await fs.rename(tempPath, filePath);
-    } catch (error) {
-      // Clean up temp file if rename failed
       try {
-        await fs.unlink(tempPath);
-      } catch {
-        // Ignore cleanup errors
+        await fs.writeFile(tempPath, JSON.stringify(data, null, 2), 'utf-8');
+        await fs.rename(tempPath, filePath);
+      } catch (error) {
+        // Clean up temp file if rename failed
+        try {
+          await fs.unlink(tempPath);
+        } catch {
+          // Ignore cleanup errors
+        }
+        throw error;
       }
-      throw error;
-    }
+    });
+    await this.writeLock;
   }
 
   /**

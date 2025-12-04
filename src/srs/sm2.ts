@@ -2,6 +2,7 @@
 // PURE MODULE: No vscode imports allowed
 
 import type { ReviewRating, SrsState } from '../storage/schema';
+import { INITIAL_EASE_FACTOR, MIN_EASE_FACTOR, DAY_MS } from '../common/constants';
 
 /**
  * SM-2 Rating to quality mapping (fixed, do not change)
@@ -31,13 +32,11 @@ export function createInitialSrsState(cardId: string): SrsState {
     cardId,
     dueAt: Date.now(),
     intervalDays: 0,
-    easeFactor: 2.5,
+    easeFactor: INITIAL_EASE_FACTOR,
     reps: 0,
     lapses: 0,
   };
 }
-
-const DAY_MS = 86400000; // 24 * 60 * 60 * 1000
 
 /**
  * Calculate the next SRS state after a review.
@@ -77,7 +76,7 @@ export function calculateNextState(
 
     // Update ease factor
     easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-    easeFactor = Math.max(1.3, easeFactor);
+    easeFactor = Math.max(MIN_EASE_FACTOR, easeFactor);
   }
 
   const dueAt = reviewTime + intervalDays * DAY_MS;

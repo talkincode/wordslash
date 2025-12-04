@@ -7,11 +7,15 @@ import { FlashcardPanel } from './webview/panel';
 import { DashboardPanel } from './webview/dashboard';
 import { DashboardViewProvider } from './webview/dashboardViewProvider';
 import { generateSampleCards } from './commands/devSampleData';
+import { initLogger, logInfo } from './common/logger';
 
 let storage: JsonlStorage | undefined;
 
 export function activate(context: vscode.ExtensionContext) {
-  console.log('WordSlash extension is now active!');
+  // Initialize logger
+  const outputChannel = vscode.window.createOutputChannel('WordSlash');
+  initLogger(outputChannel);
+  logInfo('WordSlash extension activated');
 
   // Initialize storage using globalStorageUri
   const storagePath = context.globalStorageUri.fsPath;

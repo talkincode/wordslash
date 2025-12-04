@@ -7,6 +7,8 @@ import { buildIndex } from '../storage/indexer';
 import { calculateDashboardStats } from '../storage/stats';
 import { FlashcardPanel } from './panel';
 import { DashboardPanel } from './dashboard';
+import { generateSampleCards } from '../commands/devSampleData';
+import { logDebug, logError } from '../common/logger';
 
 export class DashboardViewProvider implements vscode.WebviewViewProvider {
   public static readonly viewType = 'wordslash.dashboardView';
@@ -34,8 +36,12 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
 
     // Handle messages from the webview
     webviewView.webview.onDidReceiveMessage(async (message) => {
+      logDebug('Received message from dashboard view', message.type);
       switch (message.type) {
         case 'ready':
+          logDebug('Dashboard webview ready, sending stats');
+          await this._sendStats();
+          break;
         case 'refresh':
           await this._sendStats();
           break;
@@ -60,17 +66,56 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
   }
 
   private async _sendStats() {
-    if (!this._view) return;
+    if (!this._view) {
+      logDebug('No dashboard view available');
+      return;
+    }
 
     try {
+      logDebug('Loading dashboard stats');
       const cards = await this._storage.readAllCards();
+      logDebug('Cards loaded', cards.length);
+      
+      // Initialize sample data if no cards exist
+      if (cards.length === 0) {
+        logDebug('No cards found, initializing sample data');
+        const count = await generateSampleCards(this._storage);
+        logDebug('Created sample cards', count);
+        // Re-read cards after initialization
+        const newCards = await this._storage.readAllCards();
+        const events = await this._storage.readAllEvents();
+        const index = buildIndex(newCards, events);
+        const stats = calculateDashboardStats(index, events);
+        this._view.webview.postMessage({ type: 'stats', stats });
+        return;
+      }
+      
       const events = await this._storage.readAllEvents();
       const index = buildIndex(cards, events);
       const stats = calculateDashboardStats(index, events);
 
-      this._view.webview.postMessage({ type: 'stats', stats });
+      // Send stats including retention rate for gauge
+      this._view.webview.postMessage({ 
+        type: 'stats', 
+        stats: {
+          ...stats,
+          retentionRate: stats.retentionRate || 0
+        }
+      });
     } catch (error) {
-      console.error('[WordSlash] Error loading stats:', error);
+      logError('Error loading dashboard stats', error);
+      // Send empty stats on error so UI doesn't hang
+      this._view.webview.postMessage({ 
+        type: 'stats', 
+        stats: {
+          dueCards: 0,
+          newCards: 0,
+          totalCards: 0,
+          masteredCards: 0,
+          currentStreak: 0,
+          totalReviews: 0,
+        }
+      });
     }
   }
 
@@ -203,6 +248,70 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       color: var(--vscode-descriptionForeground);
     }
     
+    .retention-gauge-container {
+      margin: 12px 0;
+      padding: 16px;
+      background: var(--vscode-input-background);
+      border-radius: 8px;
+      text-align: center;
+    }
+    
+    .retention-gauge-title {
+      font-size: 0.9em;
+      color: var(--vscode-descriptionForeground);
+      margin-bottom: 12px;
+      font-weight: 600;
+    }
+    
+    .gauge-wrapper {
+      position: relative;
+      width: 160px;
+      height: 100px;
+      margin: 0 auto 8px;
+    }
+    
+    .gauge-svg {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .gauge-background {
+      fill: none;
+      stroke: var(--vscode-input-border);
+      stroke-width: 12;
+      stroke-linecap: round;
+    }
+    
+    .gauge-fill {
+      fill: none;
+      stroke-width: 12;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease-out, stroke 0.3s ease;
+    }
+    
+    .gauge-needle {
+      transition: transform 1s ease-out;
+      transform-origin: 80px 80px;
+    }
+    
+    .gauge-center {
+      fill: var(--vscode-editor-background);
+      stroke: var(--vscode-input-border);
+      stroke-width: 2;
+    }
+    
+    .gauge-value {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: var(--vscode-textLink-foreground);
+      margin: 4px 0;
+    }
+    
+    .gauge-label {
+      font-size: 0.75em;
+      color: var(--vscode-descriptionForeground);
+    }
+    
     .quick-links {
       margin-top: 12px;
       padding-top: 12px;
@@ -263,6 +372,33 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       <div class="streak-label">Day Streak</div>
     </div>
     
+    <div class="retention-gauge-container">
+      <div class="retention-gauge-title">Retention Rate</div>
+      <div class="gauge-wrapper">
+        <svg class="gauge-svg" viewBox="0 0 160 100">
+          <!-- Background arc -->
+          <path id="gauge-bg" class="gauge-background" 
+                d="M 20 80 A 60 60 0 0 1 140 80" />
+          <!-- Colored arc (will be updated based on retention rate) -->
+          <path id="gauge-fill" class="gauge-fill"
+                d="M 20 80 A 60 60 0 0 1 140 80"
+                stroke-dasharray="188.5"
+                stroke-dashoffset="188.5" />
+          <!-- Needle -->
+          <g id="gauge-needle" class="gauge-needle">
+            <line x1="80" y1="80" x2="80" y2="30" 
+                  stroke="var(--vscode-editor-foreground)" 
+                  stroke-width="2.5" 
+                  stroke-linecap="round" />
+          </g>
+          <!-- Center dot -->
+          <circle class="gauge-center" cx="80" cy="80" r="6" />
+        </svg>
+      </div>
+      <div class="gauge-value" id="retentionRate">0%</div>
+      <div class="gauge-label">Good/Easy Reviews</div>
+    </div>
+    
     <div class="actions">
       <button class="btn btn-primary" onclick="startLearning()">
         <span class="btn-icon">🎴</span> Start Learning
@@ -281,6 +417,21 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
   <script>
     const vscode = acquireVsCodeApi();
     
+    // Add timeout fallback in case stats never arrive
+    setTimeout(() => {
+      const loading = document.getElementById('loading');
+      if (loading && loading.style.display !== 'none') {
+        // Timeout - show empty state
+        showStats({
+          dueCards: 0,
+          newCards: 0,
+          totalCards: 0,
+          masteredCards: 0,
+          currentStreak: 0
+        });
+      }
+    }, 3000);
+    
     // Send ready message
     vscode.postMessage({ type: 'ready' });
     
@@ -297,11 +448,46 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('content').style.display = 'block';
       
-      document.getElementById('dueCards').textContent = stats.dueCards;
-      document.getElementById('newCards').textContent = stats.newCards;
-      document.getElementById('totalCards').textContent = stats.totalCards;
-      document.getElementById('masteredCards').textContent = stats.masteredCards;
-      document.getElementById('streak').textContent = stats.currentStreak;
+      document.getElementById('dueCards').textContent = stats.dueCards || 0;
+      document.getElementById('newCards').textContent = stats.newCards || 0;
+      document.getElementById('totalCards').textContent = stats.totalCards || 0;
+      document.getElementById('masteredCards').textContent = stats.masteredCards || 0;
+      document.getElementById('streak').textContent = stats.currentStreak || 0;
+      
+      // Update retention rate gauge
+      updateRetentionGauge(stats.retentionRate || 0);
+    }
+    
+    function updateRetentionGauge(rate) {
+      // Rate is 0-1, convert to percentage
+      const percentage = Math.round(rate * 100);
+      document.getElementById('retentionRate').textContent = percentage + '%';
+      
+      // Calculate arc fill (arc length is ~188.5)
+      const arcLength = 188.5;
+      const fillOffset = arcLength * (1 - rate);
+      const fillArc = document.getElementById('gauge-fill');
+      fillArc.style.strokeDashoffset = fillOffset;
+      
+      // Color based on retention rate
+      let color;
+      if (rate >= 0.9) {
+        color = '#4caf50'; // Green - Excellent
+      } else if (rate >= 0.8) {
+        color = '#8bc34a'; // Light Green - Good
+      } else if (rate >= 0.7) {
+        color = '#ffc107'; // Yellow - Fair
+      } else if (rate >= 0.6) {
+        color = '#ff9800'; // Orange - Needs Improvement
+      } else {
+        color = '#f44336'; // Red - Poor
+      }
+      fillArc.style.stroke = color;
+      
+      // Update needle rotation (0% = -90deg, 100% = 90deg)
+      const needleAngle = -90 + (rate * 180);
+      const needle = document.getElementById('gauge-needle');
+      needle.style.transform = 'rotate(' + needleAngle + 'deg)';
     }
     
     function startLearning() {

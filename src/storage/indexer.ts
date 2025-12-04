@@ -4,7 +4,7 @@
 import type { Card, CardIndex, ReviewEvent, SrsState } from './schema';
 import { calculateNextState, createInitialSrsState } from '../srs/sm2';
 
-export const INDEXER_VERSION = 1;
+export { INDEXER_VERSION } from '../common/constants';
 
 /**
  * Build an index from raw cards and events.

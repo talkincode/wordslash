@@ -5,6 +5,10 @@
   "version": "0.1.0",
   "publisher": "wordslash",
   "icon": "media/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/talkincode/wordslash"
+  },
   "engines": {
     "vscode": "^1.85.0"
   },

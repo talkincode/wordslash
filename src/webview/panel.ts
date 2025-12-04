@@ -6,8 +6,10 @@ import { JsonlStorage } from '../storage/storage';
 import { buildIndex } from '../storage/indexer';
 import { calculateNextState } from '../srs/sm2';
 import { getNextCard } from '../srs/scheduler';
-import { createReviewEvent, type Card, type ReviewRating } from '../storage/schema';
+import { createReviewEvent, type Card, type ReviewRating, type CardIndex } from '../storage/schema';
 import { isValidUiMessage, type ExtensionToUiMessage, type UiToExtensionMessage } from './protocol';
+import { logDebug, logError, logWarn } from '../common/logger';
+import { MAX_RECENT_CARDS } from '../common/constants';
 
 export class FlashcardPanel {
   public static currentPanel: FlashcardPanel | undefined;
@@ -18,7 +20,10 @@ export class FlashcardPanel {
   private _disposables: vscode.Disposable[] = [];
   private _currentCard: Card | null = null;
   private _recentCardIds: string[] = []; // Track recently reviewed cards
-  private static readonly MAX_RECENT_CARDS = 5; // Keep last 5 cards in memory
+  
+  // Cache index to avoid rebuilding on every card request
+  private _cachedIndex: CardIndex | null = null;
+  private _indexVersion: number = 0; // Increment on data changes
 
   private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, storage: JsonlStorage) {
     this._panel = panel;
@@ -66,6 +71,11 @@ export class FlashcardPanel {
   public dispose() {
     FlashcardPanel.currentPanel = undefined;
 
+    // Clear cache
+    this._cachedIndex = null;
+    this._currentCard = null;
+    this._recentCardIds = [];
+
     this._panel.dispose();
 
     while (this._disposables.length) {
@@ -78,7 +88,7 @@ export class FlashcardPanel {
 
   private async _handleMessage(message: unknown) {
     if (!isValidUiMessage(message)) {
-      console.warn('Invalid message received:', message);
+      logWarn('Invalid message received from webview');
       return;
     }
 
@@ -113,36 +123,33 @@ export class FlashcardPanel {
         break;
 
       case 'refresh': {
-        console.log('[WordSlash] Refresh requested');
-        // Clear all caches and reload from storage
+        logDebug('Refresh requested');
+        // Clear cache and reload from storage
+        this._cachedIndex = null;
         this._recentCardIds = [];
         const currentCardId = this._currentCard?.id;
         this._currentCard = null;
         
         // Try to reload the same card if it still exists, otherwise get next
         if (currentCardId) {
-          console.log('[WordSlash] Reloading current card:', currentCardId);
-          const cards = await this._storage.readAllCards();
-          const events = await this._storage.readAllEvents();
-          console.log('[WordSlash] Reloaded cards:', cards.length, 'events:', events.length);
-          const index = buildIndex(cards, events);
+          logDebug('Reloading current card', currentCardId);
+          const index = await this._getOrBuildIndex();
           
           // Get the latest version of the card from the index
           const reloadedCard = index.cards.get(currentCardId);
           
           if (reloadedCard) {
-            console.log('[WordSlash] Card found, reloading:', reloadedCard.front.term);
-            console.log('[WordSlash] Card morphemes:', reloadedCard.front.morphemes);
+            logDebug('Card found, reloading', reloadedCard.front.term);
             this._currentCard = reloadedCard;
             const srs = index.srsStates.get(reloadedCard.id);
             this._postMessage({ type: 'card', card: reloadedCard, srs });
           } else {
-            console.log('[WordSlash] Card not found or deleted, getting next');
+            logDebug('Card not found or deleted, getting next');
             // Card was deleted, get next one
             await this._sendNextCard();
           }
         } else {
-          console.log('[WordSlash] No current card, getting next');
+          logDebug('No current card, getting next');
           await this._sendNextCard();
         }
         break;
@@ -171,22 +178,45 @@ export class FlashcardPanel {
     // Add to front
     this._recentCardIds.unshift(cardId);
     // Keep only last N cards
-    if (this._recentCardIds.length > FlashcardPanel.MAX_RECENT_CARDS) {
-      this._recentCardIds = this._recentCardIds.slice(0, FlashcardPanel.MAX_RECENT_CARDS);
+    if (this._recentCardIds.length > MAX_RECENT_CARDS) {
+      this._recentCardIds = this._recentCardIds.slice(0, MAX_RECENT_CARDS);
     }
+  }
+
+  /**
+   * Get cached index or rebuild if necessary
+   */
+  private async _getOrBuildIndex(): Promise<CardIndex> {
+    if (this._cachedIndex) {
+      logDebug('Using cached index');
+      return this._cachedIndex;
+    }
+
+    logDebug('Building new index');
+    const cards = await this._storage.readAllCards();
+    const events = await this._storage.readAllEvents();
+    const index = buildIndex(cards, events);
+    this._cachedIndex = index;
+    return index;
+  }
+
+  /**
+   * Invalidate the cached index (call after data changes)
+   */
+  private _invalidateCache() {
+    this._cachedIndex = null;
+    this._indexVersion++;
+    logDebug('Cache invalidated', this._indexVersion);
   }
 
   private async _sendNextCard() {
     try {
-      const cards = await this._storage.readAllCards();
-      const events = await this._storage.readAllEvents();
-
-      console.log('[WordSlash] Cards loaded:', cards.length);
-      console.log('[WordSlash] Events loaded:', events.length);
-      console.log('[WordSlash] Recent cards:', this._recentCardIds);
-
-      const index = buildIndex(cards, events);
+      const index = await this._getOrBuildIndex();
       const now = Date.now();
+
+      logDebug('Cards loaded', index.cards.size);
+      logDebug('Events processed');
+      logDebug('Recent cards', this._recentCardIds.length);
 
       // Use getNextCard with forgetting curve optimization
       // Pass recent cards to avoid immediate repetition
@@ -196,7 +226,7 @@ export class FlashcardPanel {
         recentCardIds: this._recentCardIds,
       });
 
-      console.log('[WordSlash] Next card:', card?.id ?? 'none');
+      logDebug('Next card selected', card?.id ?? 'none');
 
       // Track current card as recently seen
       if (this._currentCard) {
@@ -215,7 +245,7 @@ export class FlashcardPanel {
         });
       }
     } catch (error) {
-      console.error('[WordSlash] Error:', error);
+      logError('Error loading next card', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       this._postMessage({ type: 'error', message });
     }
@@ -231,10 +261,11 @@ export class FlashcardPanel {
       });
       await this._storage.appendEvent(event);
 
-      // Update index and SRS state
-      const cards = await this._storage.readAllCards();
-      const events = await this._storage.readAllEvents();
-      const index = buildIndex(cards, events);
+      // Invalidate cache after data change
+      this._invalidateCache();
+
+      // Rebuild index and SRS state
+      const index = await this._getOrBuildIndex();
 
       // Get current SRS state and calculate next
       const currentSrs = index.srsStates.get(cardId);
@@ -252,6 +283,7 @@ export class FlashcardPanel {
       // Send next card
       await this._sendNextCard();
     } catch (error) {
+      logError('Error handling card rating', error);
       const message = error instanceof Error ? error.message : 'Unknown error';
       this._postMessage({ type: 'error', message });
     }

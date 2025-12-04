@@ -3,6 +3,7 @@
 // Incorporates Ebbinghaus Forgetting Curve for optimal review timing
 
 import type { Card, CardIndex, SrsState } from '../storage/schema';
+import { MATURE_INTERVAL_DAYS, DAY_MS, INITIAL_EASE_FACTOR } from '../common/constants';
 
 export const SCHEDULER_VERSION = 2;
 
@@ -42,9 +43,6 @@ interface ScoredCard {
   priority: number;
 }
 
-const MATURE_INTERVAL_DAYS = 21;
-const DAY_MS = 86400000;
-
 /**
  * Calculate memory retention based on Ebbinghaus forgetting curve.
  * R = e^(-t/S) where:
@@ -65,7 +63,7 @@ export function calculateRetention(srs: SrsState, now: number): number {
   
   // Memory strength based on interval and ease factor
   // Longer intervals and higher ease = stronger memory
-  const memoryStrength = srs.intervalDays * DAY_MS * (srs.easeFactor / 2.5);
+  const memoryStrength = srs.intervalDays * DAY_MS * (srs.easeFactor / INITIAL_EASE_FACTOR);
   
   // Ebbinghaus formula: R = e^(-t/S)
   const retention = Math.exp(-timeSinceReview / memoryStrength);
