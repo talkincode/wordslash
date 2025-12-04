@@ -71,10 +71,6 @@
         "title": "WordSlash: Export JSON Template"
       },
       {
-        "command": "wordslash.dev.generateSampleData",
-        "title": "WordSlash: [Dev] Generate Sample Data"
-      },
-      {
         "command": "wordslash.openSettings",
         "title": "WordSlash: Open Settings"
       }

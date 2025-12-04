@@ -182,6 +182,8 @@ export interface BulkCardInput {
   type?: CardType;
   /** Optional: phonetic transcription */
   phonetic?: string;
+  /** Optional: morpheme segmentation, e.g., ['un', 'believe', 'able'] */
+  morphemes?: string[];
   /** Optional: example sentence */
   example?: string;
   /** Optional: Chinese translation of example sentence */

@@ -7,7 +7,6 @@ import { executeExportBackup, executeImportBackup } from './commands/backup';
 import { FlashcardPanel } from './webview/panel';
 import { DashboardPanel } from './webview/dashboard';
 import { DashboardViewProvider } from './webview/dashboardViewProvider';
-import { generateSampleCards } from './commands/devSampleData';
 import { initLogger, logInfo } from './common/logger';
 
 let storage: JsonlStorage | undefined;
@@ -78,17 +77,6 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  // Dev command: generate sample data
-  const devGenerateSampleCommand = vscode.commands.registerCommand(
-    'wordslash.dev.generateSampleData',
-    async () => {
-      if (storage) {
-        const count = await generateSampleCards(storage);
-        vscode.window.showInformationMessage(`WordSlash: Generated ${count} sample cards!`);
-      }
-    }
-  );
-
   // Open settings command
   const openSettingsCommand = vscode.commands.registerCommand('wordslash.openSettings', () => {
     vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash');
@@ -102,7 +90,6 @@ export function activate(context: vscode.ExtensionContext) {
     importBackupCommand,
     importBulkCommand,
     exportTemplateCommand,
-    devGenerateSampleCommand,
     openSettingsCommand
   );
 }
