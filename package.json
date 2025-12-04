@@ -2,7 +2,7 @@
   "name": "wordslash",
   "displayName": "WordSlash",
   "description": "English vocabulary learning with spaced repetition in VS Code",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "publisher": "TeraTeams",
   "icon": "media/icon.png",
   "repository": {
@@ -106,7 +106,13 @@
         "wordslash.tts.engine": {
           "type": "string",
           "default": "youdao",
-          "enum": ["youdao", "google", "browser", "azure", "openai"],
+          "enum": [
+            "youdao",
+            "google",
+            "browser",
+            "azure",
+            "openai"
+          ],
           "enumDescriptions": [
             "Youdao Dictionary - High quality human recordings for words",
             "Google Translate TTS - Good quality, works for phrases",
@@ -118,9 +124,9 @@
         },
         "wordslash.tts.rate": {
           "type": "number",
-          "default": 1.0,
+          "default": 1,
           "minimum": 0.5,
-          "maximum": 2.0,
+          "maximum": 2,
           "description": "Speech rate (0.5 = slow, 1.0 = normal, 2.0 = fast)"
         },
         "wordslash.tts.autoPlay": {
