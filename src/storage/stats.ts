@@ -12,66 +12,66 @@ export function calculateDashboardStats(
 ): DashboardStats {
   const now = Date.now();
   const todayStart = new Date().setHours(0, 0, 0, 0);
-  
+
   // Card counts
   const cards = Array.from(index.cards.values());
   const totalCards = cards.length;
-  
+
   // Card type distribution
   const cardsByType = { word: 0, phrase: 0, sentence: 0 };
   for (const card of cards) {
     cardsByType[card.type]++;
   }
-  
+
   // Due and new cards from index
   const dueCards = index.dueCards.length;
   const newCards = index.newCards.length;
-  
+
   // Learned and mastered cards
   let learnedCards = 0;
   let masteredCards = 0;
   let totalEaseFactor = 0;
   let easeFactorCount = 0;
-  
+
   for (const [cardId, srs] of index.srsStates) {
     if (srs.reps > 0) {
       learnedCards++;
       totalEaseFactor += srs.easeFactor;
       easeFactorCount++;
-      
+
       // Mastered: interval >= 21 days
       if (srs.intervalDays >= 21) {
         masteredCards++;
       }
     }
   }
-  
+
   // Review statistics
   const totalReviews = events.length;
   const reviewsToday = events.filter(e => e.ts >= todayStart).length;
-  
+
   // Ratings distribution
   const ratingsDistribution = { again: 0, hard: 0, good: 0, easy: 0 };
   for (const event of events) {
     ratingsDistribution[event.rating]++;
   }
-  
+
   // Retention rate (good + easy) / total
   const positiveRatings = ratingsDistribution.good + ratingsDistribution.easy;
   const retentionRate = totalReviews > 0 ? positiveRatings / totalReviews : 0;
-  
+
   // Average ease factor
   const averageEaseFactor = easeFactorCount > 0 ? totalEaseFactor / easeFactorCount : 2.5;
-  
+
   // Calculate streak
   const currentStreak = calculateStreak(events);
-  
+
   // Reviews per day (last 90 days for heatmap)
   const reviewsPerDay = calculateReviewsPerDay(events, 90);
-  
+
   // Retention history (last 30 days rolling window)
   const retentionHistory = calculateRetentionHistory(events, 30);
-  
+
   return {
     totalCards,
     dueCards,
@@ -95,38 +95,38 @@ export function calculateDashboardStats(
  */
 function calculateStreak(events: ReviewEvent[]): number {
   if (events.length === 0) return 0;
-  
+
   // Get unique review dates
   const reviewDates = new Set<string>();
   for (const event of events) {
     const date = new Date(event.ts).toISOString().split('T')[0];
     reviewDates.add(date);
   }
-  
+
   const sortedDates = Array.from(reviewDates).sort().reverse();
   if (sortedDates.length === 0) return 0;
-  
+
   // Check if today or yesterday has a review
   const today = new Date().toISOString().split('T')[0];
   const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
-  
+
   if (sortedDates[0] !== today && sortedDates[0] !== yesterday) {
     return 0; // Streak broken
   }
-  
+
   let streak = 1;
   for (let i = 1; i < sortedDates.length; i++) {
     const prevDate = new Date(sortedDates[i - 1]);
     const currDate = new Date(sortedDates[i]);
     const diffDays = Math.floor((prevDate.getTime() - currDate.getTime()) / (24 * 60 * 60 * 1000));
-    
+
     if (diffDays === 1) {
       streak++;
     } else {
       break;
     }
   }
-  
+
   return streak;
 }
 
@@ -136,12 +136,12 @@ function calculateStreak(events: ReviewEvent[]): number {
 function calculateReviewsPerDay(events: ReviewEvent[], days: number): Array<{ date: string; count: number }> {
   const result: Array<{ date: string; count: number }> = [];
   const countByDate = new Map<string, number>();
-  
+
   for (const event of events) {
     const date = new Date(event.ts).toISOString().split('T')[0];
     countByDate.set(date, (countByDate.get(date) || 0) + 1);
   }
-  
+
   // Generate last N days
   for (let i = days - 1; i >= 0; i--) {
     const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -150,7 +150,7 @@ function calculateReviewsPerDay(events: ReviewEvent[], days: number): Array<{ da
       count: countByDate.get(date) || 0,
     });
   }
-  
+
   return result;
 }
 
@@ -160,7 +160,7 @@ function calculateReviewsPerDay(events: ReviewEvent[], days: number): Array<{ da
  */
 function calculateRetentionHistory(events: ReviewEvent[], days: number): Array<{ date: string; rate: number }> {
   const result: Array<{ date: string; rate: number }> = [];
-  
+
   // Group events by date
   const eventsByDate = new Map<string, ReviewEvent[]>();
   for (const event of events) {
@@ -170,20 +170,20 @@ function calculateRetentionHistory(events: ReviewEvent[], days: number): Array<{
     }
     eventsByDate.get(date)!.push(event);
   }
-  
+
   // Calculate retention for each day using 7-day rolling window
   for (let i = days - 1; i >= 0; i--) {
     const endDate = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
     const date = endDate.toISOString().split('T')[0];
-    
+
     // Collect events from past 7 days (rolling window)
     let positiveCount = 0;
     let totalCount = 0;
-    
+
     for (let j = 0; j < 7; j++) {
       const windowDate = new Date(endDate.getTime() - j * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
       const dayEvents = eventsByDate.get(windowDate) || [];
-      
+
       for (const event of dayEvents) {
         totalCount++;
         if (event.rating === 'good' || event.rating === 'easy') {
@@ -191,16 +191,19 @@ function calculateRetentionHistory(events: ReviewEvent[], days: number): Array<{
         }
       }
     }
-    
+
     const rate = totalCount > 0 ? positiveCount / totalCount : 0;
     result.push({ date, rate: Math.round(rate * 100) / 100 });
   }
-  
+
   return result;
 }
 
 /**
- * Generate knowledge graph from cards and their relationships
+ * Generate knowledge graph from cards and their tag relationships
+ * - Only tag relationships are shown (no synonyms/antonyms)
+ * - Node size is based on review count (reps)
+ * - Node color is based on ease factor (ef)
  */
 export function generateKnowledgeGraph(
   index: CardIndex,
@@ -211,163 +214,85 @@ export function generateKnowledgeGraph(
   } = {}
 ): KnowledgeGraph {
   const { maxNodes = 100, includeOrphans = false, filterTag } = options;
-  
+
   const nodes: KnowledgeGraphNode[] = [];
   const edges: KnowledgeGraphEdge[] = [];
   const nodeIds = new Set<string>();
-  
+
   // Filter cards
   let cards = Array.from(index.cards.values());
   if (filterTag) {
     cards = cards.filter(c => c.tags?.includes(filterTag));
   }
-  
+
   // Calculate mastery level from SRS state
   const getMasteryLevel = (cardId: string): number => {
     const srs = index.srsStates.get(cardId);
     if (!srs || srs.reps === 0) return 0;
-    
+
     if (srs.intervalDays >= 21) return 5;
     if (srs.intervalDays >= 14) return 4;
     if (srs.intervalDays >= 7) return 3;
     if (srs.intervalDays >= 3) return 2;
     return 1;
   };
-  
-  // Track connections for orphan filtering
+
+  // Get SRS data for node visualization
+  const getSrsData = (cardId: string): { reps: number; ef: number } => {
+    const srs = index.srsStates.get(cardId);
+    return {
+      reps: srs?.reps ?? 0,
+      ef: srs?.easeFactor ?? 2.5, // Default EF for new cards
+    };
+  };
+
+  // Track connections for orphan filtering (only count tags now)
   const connectionCount = new Map<string, number>();
-  
+
   for (const card of cards) {
-    let connections = 0;
-    if (card.back?.synonyms?.length) connections += card.back.synonyms.length;
-    if (card.back?.antonyms?.length) connections += card.back.antonyms.length;
-    if (card.tags?.length) connections += card.tags.length;
+    const connections = card.tags?.length ?? 0;
     connectionCount.set(card.id, connections);
   }
-  
+
   // Sort by connections (most connected first)
   cards.sort((a, b) => (connectionCount.get(b.id) || 0) - (connectionCount.get(a.id) || 0));
-  
+
   // Filter orphans if requested
   if (!includeOrphans) {
     cards = cards.filter(c => (connectionCount.get(c.id) || 0) > 0);
   }
-  
+
   // Limit nodes
   cards = cards.slice(0, maxNodes);
-  
+
   // Add card nodes
   for (const card of cards) {
     const masteryLevel = getMasteryLevel(card.id);
-    
+    const { reps, ef } = getSrsData(card.id);
+
     nodes.push({
       id: card.id,
       label: card.front.term,
       type: 'card',
       masteryLevel,
+      reps,
+      ef,
       weight: 1 + (connectionCount.get(card.id) || 0) * 0.2,
     });
     nodeIds.add(card.id);
   }
-  
-  // Helper to generate consistent ID for related terms
-  const getRelatedTermId = (term: string, type: 'synonym' | 'antonym' | 'tag'): string => {
-    return `${type}:${term.toLowerCase()}`;
+
+  // Helper to generate consistent ID for tag nodes
+  const getTagId = (tag: string): string => {
+    return `tag:${tag.toLowerCase()}`;
   };
-  
-  // Add relationships
+
+  // Add tag relationships only
   for (const card of cards) {
-    // Synonyms
-    if (card.back?.synonyms) {
-      for (const synonym of card.back.synonyms) {
-        const synonymId = getRelatedTermId(synonym, 'synonym');
-        
-        // Check if synonym matches another card
-        const matchingCard = cards.find(
-          c => c.id !== card.id && c.front.term.toLowerCase() === synonym.toLowerCase()
-        );
-        
-        if (matchingCard) {
-          // Direct card-to-card connection
-          if (!edges.some(e => 
-            (e.source === card.id && e.target === matchingCard.id) ||
-            (e.source === matchingCard.id && e.target === card.id && e.type === 'synonym')
-          )) {
-            edges.push({
-              source: card.id,
-              target: matchingCard.id,
-              type: 'synonym',
-              weight: 2,
-            });
-          }
-        } else {
-          if (!nodeIds.has(synonymId)) {
-            nodes.push({
-              id: synonymId,
-              label: synonym,
-              type: 'synonym',
-              weight: 0.5,
-            });
-            nodeIds.add(synonymId);
-          }
-          
-          edges.push({
-            source: card.id,
-            target: synonymId,
-            type: 'synonym',
-            weight: 1,
-          });
-        }
-      }
-    }
-    
-    // Antonyms
-    if (card.back?.antonyms) {
-      for (const antonym of card.back.antonyms) {
-        const antonymId = getRelatedTermId(antonym, 'antonym');
-        
-        const matchingCard = cards.find(
-          c => c.id !== card.id && c.front.term.toLowerCase() === antonym.toLowerCase()
-        );
-        
-        if (matchingCard) {
-          if (!edges.some(e => 
-            (e.source === card.id && e.target === matchingCard.id) ||
-            (e.source === matchingCard.id && e.target === card.id && e.type === 'antonym')
-          )) {
-            edges.push({
-              source: card.id,
-              target: matchingCard.id,
-              type: 'antonym',
-              weight: 2,
-            });
-          }
-        } else {
-          if (!nodeIds.has(antonymId)) {
-            nodes.push({
-              id: antonymId,
-              label: antonym,
-              type: 'antonym',
-              weight: 0.5,
-            });
-            nodeIds.add(antonymId);
-          }
-          
-          edges.push({
-            source: card.id,
-            target: antonymId,
-            type: 'antonym',
-            weight: 1,
-          });
-        }
-      }
-    }
-    
-    // Tags
     if (card.tags) {
       for (const tag of card.tags) {
-        const tagId = getRelatedTermId(tag, 'tag');
-        
+        const tagId = getTagId(tag);
+
         if (!nodeIds.has(tagId)) {
           nodes.push({
             id: tagId,
@@ -377,7 +302,7 @@ export function generateKnowledgeGraph(
           });
           nodeIds.add(tagId);
         }
-        
+
         edges.push({
           source: card.id,
           target: tagId,
@@ -387,7 +312,7 @@ export function generateKnowledgeGraph(
       }
     }
   }
-  
+
   return {
     nodes,
     edges,

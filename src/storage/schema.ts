@@ -276,10 +276,14 @@ export interface KnowledgeGraphNode {
   /** The term/word */
   label: string;
   /** Node type */
-  type: 'card' | 'synonym' | 'antonym' | 'tag';
+  type: 'card' | 'tag';
   /** SRS mastery level (0-5): 0=new, 1-2=learning, 3-4=learned, 5=mastered */
   masteryLevel?: number;
-  /** Color for visualization (optional, UI can derive from masteryLevel) */
+  /** Review count (reps) - used for node size */
+  reps?: number;
+  /** Ease factor (ef) - used for node color (1.3-2.5+) */
+  ef?: number;
+  /** Color for visualization (optional, UI can derive from ef) */
   color?: string;
   /** Size weight for visualization */
   weight?: number;
@@ -294,7 +298,7 @@ export interface KnowledgeGraphEdge {
   /** Target node ID */
   target: string;
   /** Relationship type */
-  type: 'synonym' | 'antonym' | 'tag' | 'related';
+  type: 'tag';
   /** Edge weight for visualization */
   weight?: number;
 }

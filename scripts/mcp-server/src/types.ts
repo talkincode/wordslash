@@ -135,8 +135,10 @@ export interface DashboardStats {
 export interface KnowledgeGraphNode {
   id: string;
   label: string;
-  type: 'card' | 'synonym' | 'antonym' | 'tag';
+  type: 'card' | 'tag';
   masteryLevel?: number;
+  reps?: number;
+  ef?: number;
   color?: string;
   weight?: number;
 }
@@ -144,7 +146,7 @@ export interface KnowledgeGraphNode {
 export interface KnowledgeGraphEdge {
   source: string;
   target: string;
-  type: 'synonym' | 'antonym' | 'tag' | 'related';
+  type: 'tag';
   weight?: number;
 }
 

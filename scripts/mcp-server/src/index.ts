@@ -864,6 +864,9 @@ function calculateReviewsPerDay(events: { ts: number }[], days: number): Array<{
 
 /**
  * Generate knowledge graph from vocabulary cards
+ * - Only tag relationships are shown (no synonyms/antonyms)
+ * - Node size is based on review count (reps)
+ * - Node color is based on ease factor (ef)
  */
 async function generateKnowledgeGraph(
   maxNodes: number,
@@ -873,7 +876,7 @@ async function generateKnowledgeGraph(
   const cards = await storage.getCards();
   const events = await storage.readAllEvents();
   
-  // Build SRS state for mastery level
+  // Build SRS state for mastery level, reps, and ef
   const eventsByCard = new Map<string, { ts: number; rating: string }[]>();
   for (const event of events) {
     const cardEvents = eventsByCard.get(event.cardId) || [];
@@ -885,18 +888,37 @@ async function generateKnowledgeGraph(
   const edges: KnowledgeGraphEdge[] = [];
   const nodeIds = new Set<string>();
   
-  // Helper to calculate mastery level
-  const getMasteryLevel = (cardId: string): number => {
+  // Helper to calculate mastery level and SRS data
+  const getSrsData = (cardId: string): { masteryLevel: number; reps: number; ef: number } => {
     const cardEvents = eventsByCard.get(cardId) || [];
-    if (cardEvents.length === 0) return 0;
-    
-    // Calculate based on reps and ease factor
     const reps = cardEvents.length;
-    if (reps >= 10) return 5;
-    if (reps >= 7) return 4;
-    if (reps >= 4) return 3;
-    if (reps >= 2) return 2;
-    return 1;
+    
+    // Calculate mastery level based on reps
+    let masteryLevel = 0;
+    if (reps >= 10) masteryLevel = 5;
+    else if (reps >= 7) masteryLevel = 4;
+    else if (reps >= 4) masteryLevel = 3;
+    else if (reps >= 2) masteryLevel = 2;
+    else if (reps >= 1) masteryLevel = 1;
+    
+    // Simple EF calculation based on rating history
+    // This is a simplified version - the real SM-2 calculates EF per review
+    let ef = 2.5; // Default EF
+    if (cardEvents.length > 0) {
+      const avgQuality = cardEvents.reduce((sum, e) => {
+        switch (e.rating) {
+          case 'again': return sum + 0;
+          case 'hard': return sum + 3;
+          case 'good': return sum + 4;
+          case 'easy': return sum + 5;
+          default: return sum + 4;
+        }
+      }, 0) / cardEvents.length;
+      // Apply SM-2 EF formula
+      ef = Math.max(1.3, 2.5 + (0.1 - (5 - avgQuality) * (0.08 + (5 - avgQuality) * 0.02)));
+    }
+    
+    return { masteryLevel, reps, ef };
   };
   
   // Filter cards by tag if specified
@@ -905,17 +927,11 @@ async function generateKnowledgeGraph(
     filteredCards = filteredCards.filter(c => c.tags?.includes(tag));
   }
   
-  // Track connections for orphan filtering
+  // Track connections for orphan filtering (only count tags now)
   const connectionCount = new Map<string, number>();
   
-  // First pass: count connections
   for (const card of filteredCards) {
-    let connections = 0;
-    
-    if (card.back?.synonyms?.length) connections += card.back.synonyms.length;
-    if (card.back?.antonyms?.length) connections += card.back.antonyms.length;
-    if (card.tags?.length) connections += card.tags.length;
-    
+    const connections = card.tags?.length ?? 0;
     connectionCount.set(card.id, connections);
   }
   
@@ -932,117 +948,30 @@ async function generateKnowledgeGraph(
   
   // Add card nodes
   for (const card of filteredCards) {
-    const masteryLevel = getMasteryLevel(card.id);
+    const { masteryLevel, reps, ef } = getSrsData(card.id);
     
     nodes.push({
       id: card.id,
       label: card.front.term,
       type: 'card',
       masteryLevel,
+      reps,
+      ef,
       weight: 1 + (connectionCount.get(card.id) || 0) * 0.2,
     });
     nodeIds.add(card.id);
   }
   
-  // Helper to generate consistent ID for related terms
-  const getRelatedTermId = (term: string, type: 'synonym' | 'antonym' | 'tag'): string => {
-    return `${type}:${term.toLowerCase()}`;
+  // Helper to generate consistent ID for tag nodes
+  const getTagId = (tagName: string): string => {
+    return `tag:${tagName.toLowerCase()}`;
   };
   
-  // Add relationships
+  // Add tag relationships only
   for (const card of filteredCards) {
-    // Synonyms
-    if (card.back?.synonyms) {
-      for (const synonym of card.back.synonyms) {
-        const synonymId = getRelatedTermId(synonym, 'synonym');
-        
-        // Check if synonym matches another card
-        const matchingCard = filteredCards.find(
-          c => c.id !== card.id && c.front.term.toLowerCase() === synonym.toLowerCase()
-        );
-        
-        if (matchingCard) {
-          // Direct card-to-card connection
-          edges.push({
-            source: card.id,
-            target: matchingCard.id,
-            type: 'synonym',
-            weight: 2,
-          });
-        } else if (!nodeIds.has(synonymId)) {
-          // Add synonym as separate node
-          nodes.push({
-            id: synonymId,
-            label: synonym,
-            type: 'synonym',
-            weight: 0.5,
-          });
-          nodeIds.add(synonymId);
-          
-          edges.push({
-            source: card.id,
-            target: synonymId,
-            type: 'synonym',
-            weight: 1,
-          });
-        } else {
-          edges.push({
-            source: card.id,
-            target: synonymId,
-            type: 'synonym',
-            weight: 1,
-          });
-        }
-      }
-    }
-    
-    // Antonyms
-    if (card.back?.antonyms) {
-      for (const antonym of card.back.antonyms) {
-        const antonymId = getRelatedTermId(antonym, 'antonym');
-        
-        // Check if antonym matches another card
-        const matchingCard = filteredCards.find(
-          c => c.id !== card.id && c.front.term.toLowerCase() === antonym.toLowerCase()
-        );
-        
-        if (matchingCard) {
-          edges.push({
-            source: card.id,
-            target: matchingCard.id,
-            type: 'antonym',
-            weight: 2,
-          });
-        } else if (!nodeIds.has(antonymId)) {
-          nodes.push({
-            id: antonymId,
-            label: antonym,
-            type: 'antonym',
-            weight: 0.5,
-          });
-          nodeIds.add(antonymId);
-          
-          edges.push({
-            source: card.id,
-            target: antonymId,
-            type: 'antonym',
-            weight: 1,
-          });
-        } else {
-          edges.push({
-            source: card.id,
-            target: antonymId,
-            type: 'antonym',
-            weight: 1,
-          });
-        }
-      }
-    }
-    
-    // Tags (connect cards with same tags)
     if (card.tags) {
       for (const cardTag of card.tags) {
-        const tagId = getRelatedTermId(cardTag, 'tag');
+        const tagId = getTagId(cardTag);
         
         if (!nodeIds.has(tagId)) {
           nodes.push({

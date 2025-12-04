@@ -1254,10 +1254,23 @@ export class DashboardPanel {
           <div id="graphTooltip" class="graph-tooltip" style="display: none;"></div>
         </div>
         <div class="graph-legend">
-          <div class="legend-item"><div class="legend-dot card"></div> Vocabulary</div>
-          <div class="legend-item"><div class="legend-dot synonym"></div> Synonym</div>
-          <div class="legend-item"><div class="legend-dot antonym"></div> Antonym</div>
           <div class="legend-item"><div class="legend-dot tag"></div> Tag</div>
+          <div class="legend-item" style="margin-left: 16px;">
+            <span style="display: inline-flex; align-items: center; gap: 4px;">
+              <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: hsl(0, 70%, 55%);"></span>
+              <span style="margin: 0 2px;">→</span>
+              <span style="display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: hsl(120, 70%, 55%);"></span>
+            </span>
+            <span style="margin-left: 4px;">Hard → Easy (EF)</span>
+          </div>
+          <div class="legend-item" style="margin-left: 16px;">
+            <span style="display: inline-flex; align-items: center; gap: 4px;">
+              <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--vscode-textLink-foreground);"></span>
+              <span style="margin: 0 2px;">→</span>
+              <span style="display: inline-block; width: 16px; height: 16px; border-radius: 50%; background: var(--vscode-textLink-foreground);"></span>
+            </span>
+            <span style="margin-left: 4px;">Reviews</span>
+          </div>
           <span style="margin-left: auto; font-size: 0.85em; color: var(--vscode-descriptionForeground);">
             🖱️ Drag to pan · Scroll to zoom · Double-click node for details
           </span>
@@ -1839,20 +1852,45 @@ export class DashboardPanel {
       graphEdges = graph.edges;
       const nodeMap = new Map(graphNodes.map(n => [n.id, n]));
       
-      // Color mapping
-      const colors = {
-        card: '#4fc3f7',
-        synonym: '#81c784',
-        antonym: '#e57373',
-        tag: '#ffb74d',
-      };
+      // Get color based on ease factor (ef)
+      // ef ranges from 1.3 (hard) to 2.5+ (easy)
+      // Hard cards (low ef): red/orange
+      // Easy cards (high ef): green/blue
+      function getCardColorByEf(ef) {
+        if (ef === undefined || ef === null) ef = 2.5; // Default for new cards
+        
+        // Clamp ef to reasonable range
+        const clampedEf = Math.max(1.3, Math.min(3.0, ef));
+        
+        // Map ef to hue: 1.3 -> 0 (red), 2.5 -> 120 (green), 3.0 -> 200 (cyan)
+        // Using HSL for smooth color transitions
+        let hue;
+        if (clampedEf <= 2.5) {
+          // 1.3-2.5: red to green (0-120)
+          hue = ((clampedEf - 1.3) / (2.5 - 1.3)) * 120;
+        } else {
+          // 2.5-3.0: green to cyan (120-200)
+          hue = 120 + ((clampedEf - 2.5) / (3.0 - 2.5)) * 80;
+        }
+        
+        return \`hsl(\${Math.round(hue)}, 70%, 55%)\`;
+      }
       
-      // Edge colors
+      // Get node radius based on reps (review count)
+      // reps: 0 = new, higher = more reviews
+      function getCardRadiusByReps(reps) {
+        if (reps === undefined || reps === null) reps = 0;
+        // Base radius 8, max radius 20
+        // Logarithmic scale to prevent huge nodes
+        return 8 + Math.min(12, Math.log2(reps + 1) * 3);
+      }
+      
+      // Color mapping for tags only
+      const tagColor = '#ffb74d';
+      
+      // Edge colors (only tag edges now)
       const edgeColors = {
-        synonym: 'rgba(129, 199, 132, 0.6)',
-        antonym: 'rgba(229, 115, 115, 0.6)',
         tag: 'rgba(255, 183, 77, 0.6)',
-        related: 'rgba(200, 200, 200, 0.5)',
       };
       
       // Setup mouse events for interaction
@@ -1868,7 +1906,7 @@ export class DashboardPanel {
         const clickedNode = graphNodes.find(n => {
           const dx = n.x - mouseX;
           const dy = n.y - mouseY;
-          const radius = n.type === 'card' ? 12 : 8;
+          const radius = n.type === 'card' ? getCardRadiusByReps(n.reps) : 8;
           return dx * dx + dy * dy < radius * radius;
         });
         
@@ -1931,7 +1969,7 @@ export class DashboardPanel {
           const hoveredNode = graphNodes.find(n => {
             const dx = n.x - mouseX;
             const dy = n.y - mouseY;
-            const radius = n.type === 'card' ? 12 : 8;
+            const radius = n.type === 'card' ? getCardRadiusByReps(n.reps) : 8;
             return dx * dx + dy * dy < radius * radius;
           });
           
@@ -1996,11 +2034,18 @@ export class DashboardPanel {
           tag: 'Tag'
         };
         
+        // Format ease factor for display
+        const efDisplay = node.ef !== undefined ? node.ef.toFixed(2) : 'N/A';
+        const repsDisplay = node.reps !== undefined ? node.reps : 0;
+        
         tooltip.innerHTML = \`
           <div class="tooltip-title">\${node.label}</div>
           <div class="tooltip-type">\${typeLabels[node.type] || node.type}</div>
-          \${node.type === 'card' && node.masteryLevel !== undefined ? 
-            '<div class="tooltip-type">Mastery: ' + node.masteryLevel + '</div>' : ''}
+          \${node.type === 'card' ? \`
+            <div class="tooltip-type">Reviews: \${repsDisplay}</div>
+            <div class="tooltip-type">Ease Factor: \${efDisplay}</div>
+            <div class="tooltip-type">Mastery: \${node.masteryLevel !== undefined ? node.masteryLevel : 0}</div>
+          \` : ''}
         \`;
         
         tooltip.style.display = 'block';
@@ -2090,14 +2135,18 @@ export class DashboardPanel {
           ctx.beginPath();
           ctx.moveTo(source.x, source.y);
           ctx.lineTo(target.x, target.y);
-          ctx.strokeStyle = edgeColors[edge.type] || edgeColors.related;
+          ctx.strokeStyle = edgeColors[edge.type] || edgeColors.tag;
           ctx.lineWidth = 1.5 / graphScale;
           ctx.stroke();
         }
         
         // Draw nodes
         for (const node of graphNodes) {
-          const radius = node.type === 'card' ? 10 + (node.masteryLevel || 0) * 0.5 : 6;
+          // Card nodes: size based on reps, color based on ef
+          // Tag nodes: fixed size and color
+          const radius = node.type === 'card' 
+            ? getCardRadiusByReps(node.reps) 
+            : 6;
           const isSelected = node === selectedNode;
           
           // Glow for selected
@@ -2110,7 +2159,12 @@ export class DashboardPanel {
           
           ctx.beginPath();
           ctx.arc(node.x, node.y, radius, 0, Math.PI * 2);
-          ctx.fillStyle = colors[node.type] || colors.card;
+          
+          // Card color based on ef (ease factor)
+          // Tag color is fixed orange
+          ctx.fillStyle = node.type === 'card' 
+            ? getCardColorByEf(node.ef) 
+            : tagColor;
           ctx.fill();
           
           // Border

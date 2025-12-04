@@ -225,17 +225,17 @@ describe('Knowledge Graph', () => {
       expect(graph.meta.totalCards).toBe(0);
     });
 
-    it('should create nodes for cards with connections', () => {
+    it('should create nodes for cards with tag connections', () => {
       const cards: Card[] = [
         createTestCard({
           id: '1',
           front: { term: 'happy' },
-          back: { synonyms: ['joyful', 'glad'] },
+          tags: ['emotions'],
         }),
         createTestCard({
           id: '2',
           front: { term: 'sad' },
-          back: { antonyms: ['happy'] },
+          tags: ['emotions'],
         }),
       ];
       const index = buildIndex(cards, []);
@@ -246,44 +246,48 @@ describe('Knowledge Graph', () => {
       expect(cardNodes).toHaveLength(2);
       expect(cardNodes.map(n => n.label)).toContain('happy');
       expect(cardNodes.map(n => n.label)).toContain('sad');
+      
+      // Check that cards have reps and ef properties
+      expect(cardNodes[0].reps).toBeDefined();
+      expect(cardNodes[0].ef).toBeDefined();
     });
 
-    it('should create synonym nodes and edges', () => {
+    it('should NOT create synonym nodes (only tags now)', () => {
       const cards: Card[] = [
         createTestCard({
           id: '1',
           front: { term: 'happy' },
           back: { synonyms: ['joyful'] },
+          tags: ['emotions'], // Need tags to not be filtered as orphan
         }),
       ];
       const index = buildIndex(cards, []);
       const graph = generateKnowledgeGraph(index);
 
-      const synonymNodes = graph.nodes.filter(n => n.type === 'synonym');
-      expect(synonymNodes).toHaveLength(1);
-      expect(synonymNodes[0].label).toBe('joyful');
+      // Synonym nodes should NOT exist anymore
+      const synonymNodes = graph.nodes.filter(n => n.type === 'synonym' as string);
+      expect(synonymNodes).toHaveLength(0);
 
-      const synonymEdges = graph.edges.filter(e => e.type === 'synonym');
-      expect(synonymEdges).toHaveLength(1);
+      // Only tag edges should exist
+      const tagEdges = graph.edges.filter(e => e.type === 'tag');
+      expect(tagEdges.length).toBeGreaterThan(0);
     });
 
-    it('should create antonym nodes and edges', () => {
+    it('should NOT create antonym nodes (only tags now)', () => {
       const cards: Card[] = [
         createTestCard({
           id: '1',
           front: { term: 'happy' },
           back: { antonyms: ['sad'] },
+          tags: ['emotions'], // Need tags to not be filtered as orphan
         }),
       ];
       const index = buildIndex(cards, []);
       const graph = generateKnowledgeGraph(index);
 
-      const antonymNodes = graph.nodes.filter(n => n.type === 'antonym');
-      expect(antonymNodes).toHaveLength(1);
-      expect(antonymNodes[0].label).toBe('sad');
-
-      const antonymEdges = graph.edges.filter(e => e.type === 'antonym');
-      expect(antonymEdges).toHaveLength(1);
+      // Antonym nodes should NOT exist anymore
+      const antonymNodes = graph.nodes.filter(n => n.type === 'antonym' as string);
+      expect(antonymNodes).toHaveLength(0);
     });
 
     it('should create tag nodes and edges', () => {
@@ -306,30 +310,29 @@ describe('Knowledge Graph', () => {
       expect(tagEdges).toHaveLength(2);
     });
 
-    it('should connect cards directly when synonym matches another card', () => {
+    it('should connect cards via shared tags', () => {
       const cards: Card[] = [
         createTestCard({
           id: '1',
           front: { term: 'happy' },
-          back: { synonyms: ['joyful'] },
+          tags: ['emotions'],
         }),
         createTestCard({
           id: '2',
           front: { term: 'joyful' },
-          back: { synonyms: ['happy'] }, // Also has synonym to create connection
+          tags: ['emotions'],
         }),
       ];
       const index = buildIndex(cards, []);
       const graph = generateKnowledgeGraph(index);
 
-      // Should have direct edge between cards
-      const synonymEdges = graph.edges.filter(e => e.type === 'synonym');
-      // Check that there's an edge connecting the two cards
-      const cardToCardEdge = synonymEdges.find(e => 
-        (e.source === '1' && e.target === '2') ||
-        (e.source === '2' && e.target === '1')
-      );
-      expect(cardToCardEdge).toBeDefined();
+      // Both cards should connect to the same tag
+      const tagEdges = graph.edges.filter(e => e.type === 'tag');
+      expect(tagEdges).toHaveLength(2); // One edge per card to the tag
+      
+      // Verify the tag node exists
+      const tagNode = graph.nodes.find(n => n.type === 'tag' && n.label === '#emotions');
+      expect(tagNode).toBeDefined();
     });
 
     it('should filter by tag', () => {
@@ -355,17 +358,17 @@ describe('Knowledge Graph', () => {
       expect(cardNodes[0].label).toBe('happy');
     });
 
-    it('should exclude orphan cards by default', () => {
+    it('should exclude orphan cards by default (only cards without tags)', () => {
       const cards: Card[] = [
         createTestCard({
           id: '1',
           front: { term: 'happy' },
-          back: { synonyms: ['joyful'] },
+          tags: ['emotions'],
         }),
         createTestCard({
           id: '2',
           front: { term: 'lonely' },
-          // No synonyms, antonyms, or tags
+          // No tags = orphan now
         }),
       ];
       const index = buildIndex(cards, []);
@@ -381,11 +384,12 @@ describe('Knowledge Graph', () => {
         createTestCard({
           id: '1',
           front: { term: 'happy' },
-          back: { synonyms: ['joyful'] },
+          tags: ['emotions'],
         }),
         createTestCard({
           id: '2',
           front: { term: 'lonely' },
+          // No tags = orphan
         }),
       ];
       const index = buildIndex(cards, []);
@@ -400,7 +404,7 @@ describe('Knowledge Graph', () => {
         createTestCard({
           id: String(i + 1),
           front: { term: `word${i + 1}` },
-          back: { synonyms: [`syn${i + 1}`] },
+          tags: [`tag${i + 1}`], // Use tags instead of synonyms
         })
       );
       const index = buildIndex(cards, []);
@@ -410,12 +414,12 @@ describe('Knowledge Graph', () => {
       expect(cardNodes.length).toBeLessThanOrEqual(3);
     });
 
-    it('should calculate mastery level from SRS state', () => {
+    it('should calculate mastery level and include reps/ef from SRS state', () => {
       const cards: Card[] = [
         createTestCard({
           id: '1',
           front: { term: 'mastered' },
-          back: { synonyms: ['expert'] },
+          tags: ['test'], // Use tags to avoid orphan filtering
         }),
       ];
       // Create events to build up mastery
@@ -432,6 +436,8 @@ describe('Knowledge Graph', () => {
 
       const cardNode = graph.nodes.find(n => n.id === '1');
       expect(cardNode?.masteryLevel).toBe(5); // 10 reps = mastery level 5
+      expect(cardNode?.reps).toBe(10);
+      expect(cardNode?.ef).toBeDefined();
     });
   });
 });
