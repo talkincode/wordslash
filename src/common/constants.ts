@@ -5,6 +5,7 @@
  * Time constants
  */
 export const DAY_MS = 86400000; // 24 * 60 * 60 * 1000
+export const HOUR_MS = 3600000; // 60 * 60 * 1000
 
 /**
  * SRS constants
@@ -12,6 +13,9 @@ export const DAY_MS = 86400000; // 24 * 60 * 60 * 1000
 export const MATURE_INTERVAL_DAYS = 21;
 export const INITIAL_EASE_FACTOR = 2.5;
 export const MIN_EASE_FACTOR = 1.3;
+export const MAX_EASE_FACTOR = 3.0;
+export const MAX_INTERVAL_DAYS = 365; // Maximum interval cap: 1 year
+export const MIN_REVIEW_INTERVAL_MS = HOUR_MS; // Minimum time between "real" reviews
 
 /**
  * Scheduler constants

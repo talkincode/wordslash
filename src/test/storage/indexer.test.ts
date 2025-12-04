@@ -68,10 +68,12 @@ describe('Indexer', () => {
       const baseCard = createCard({ type: 'word', front: { term: 'test' } });
       const cards: Card[] = [{ ...baseCard, id: '1' }];
 
+      // Events must be spaced > 1 hour apart to avoid consolidation review protection
+      const HOUR_MS = 3600000;
       const baseEvent = createReviewEvent({ cardId: '1', rating: 'good', mode: 'flashcard' });
       const events: ReviewEvent[] = [
         { ...baseEvent, id: 'e1', ts: 1000 },
-        { ...baseEvent, id: 'e2', ts: 2000 },
+        { ...baseEvent, id: 'e2', ts: 1000 + HOUR_MS * 2 }, // 2 hours later
       ];
 
       const index = buildIndex(cards, events);
@@ -86,6 +88,8 @@ describe('Indexer', () => {
       const baseCard = createCard({ type: 'word', front: { term: 'test' } });
       const cards: Card[] = [{ ...baseCard, id: '1' }];
 
+      // Events must be spaced > 1 hour apart to avoid consolidation review protection
+      const HOUR_MS = 3600000;
       const events: ReviewEvent[] = [
         {
           ...createReviewEvent({ cardId: '1', rating: 'good', mode: 'flashcard' }),
@@ -95,12 +99,12 @@ describe('Indexer', () => {
         {
           ...createReviewEvent({ cardId: '1', rating: 'good', mode: 'flashcard' }),
           id: 'e2',
-          ts: 2000,
+          ts: 1000 + HOUR_MS * 2, // 2 hours later
         },
         {
           ...createReviewEvent({ cardId: '1', rating: 'again', mode: 'flashcard' }),
           id: 'e3',
-          ts: 3000,
+          ts: 1000 + HOUR_MS * 4, // 4 hours later
         },
       ];
 

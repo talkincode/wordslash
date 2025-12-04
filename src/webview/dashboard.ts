@@ -10,6 +10,7 @@ import { FlashcardPanel } from './panel';
 
 export class DashboardPanel {
   public static currentPanel: DashboardPanel | undefined;
+  private static _context: vscode.ExtensionContext | undefined;
 
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
@@ -35,7 +36,12 @@ export class DashboardPanel {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
   }
 
-  public static createOrShow(extensionUri: vscode.Uri, storage: JsonlStorage) {
+  public static createOrShow(extensionUri: vscode.Uri, storage: JsonlStorage, context?: vscode.ExtensionContext) {
+    // Store context for later use
+    if (context) {
+      DashboardPanel._context = context;
+    }
+    
     const column = vscode.ViewColumn.One;
 
     // If we already have a panel, show it
@@ -104,7 +110,9 @@ export class DashboardPanel {
 
       case 'start_flashcard_study':
         // Open flashcard panel
-        FlashcardPanel.createOrShow(this._extensionUri, this._storage);
+        if (DashboardPanel._context) {
+          FlashcardPanel.createOrShow(this._extensionUri, this._storage, DashboardPanel._context);
+        }
         break;
 
       case 'open_settings':
@@ -2361,13 +2369,32 @@ export class DashboardPanel {
         const dueDate = new Date(srs.dueAt);
         const lastReview = srs.lastReviewAt ? new Date(srs.lastReviewAt) : null;
         
+        // Format interval for display
+        const formatInterval = (days) => {
+          if (!Number.isFinite(days) || days < 0 || days > 10000) {
+            return 'Invalid';
+          }
+          if (days < 1) return '<1d';
+          if (days < 30) return Math.round(days) + 'd';
+          if (days < 365) return Math.round(days / 30) + 'mo';
+          return (days / 365).toFixed(1) + 'y';
+        };
+        
+        // Format due date
+        const formatDueDate = (timestamp) => {
+          if (!Number.isFinite(timestamp) || timestamp < 0 || timestamp > Date.now() + 365 * 100 * 24 * 60 * 60 * 1000) {
+            return 'Invalid Date';
+          }
+          return new Date(timestamp).toLocaleDateString();
+        };
+        
         bodyHTML += \`
           <div class="modal-section">
             <div class="modal-section-title">Learning Progress</div>
             <div class="modal-srs-info">
               <div class="modal-srs-item">
                 <div class="modal-srs-label">Interval</div>
-                <div class="modal-srs-value">\${srs.intervalDays}d</div>
+                <div class="modal-srs-value">\${formatInterval(srs.intervalDays)}</div>
               </div>
               <div class="modal-srs-item">
                 <div class="modal-srs-label">Ease Factor</div>
@@ -2383,8 +2410,8 @@ export class DashboardPanel {
               </div>
             </div>
             <div style="margin-top: 12px; font-size: 0.9em; color: var(--vscode-descriptionForeground);">
-              Due: \${dueDate.toLocaleDateString()}
-              \${lastReview ? ' · Last review: ' + lastReview.toLocaleDateString() : ''}
+              Due: \${formatDueDate(srs.dueAt)}
+              \${lastReview ? ' · Last review: ' + new Date(lastReview).toLocaleDateString() : ''}
             </div>
           </div>
         \`;

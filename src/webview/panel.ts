@@ -7,9 +7,12 @@ import { buildIndex } from '../storage/indexer';
 import { calculateNextState } from '../srs/sm2';
 import { getNextCard } from '../srs/scheduler';
 import { createReviewEvent, type Card, type ReviewRating, type CardIndex } from '../storage/schema';
-import { isValidUiMessage, type ExtensionToUiMessage, type UiToExtensionMessage } from './protocol';
+import { isValidUiMessage, type ExtensionToUiMessage, type UiToExtensionMessage, type StudyMode, type SessionStats } from './protocol';
 import { logDebug, logError, logWarn } from '../common/logger';
 import { MAX_RECENT_CARDS } from '../common/constants';
+
+// GlobalState keys
+const STUDY_MODE_KEY = 'wordslash.studyMode';
 
 export class FlashcardPanel {
   public static currentPanel: FlashcardPanel | undefined;
@@ -17,18 +20,37 @@ export class FlashcardPanel {
   private readonly _panel: vscode.WebviewPanel;
   private readonly _extensionUri: vscode.Uri;
   private readonly _storage: JsonlStorage;
+  private readonly _context: vscode.ExtensionContext;
   private _disposables: vscode.Disposable[] = [];
   private _currentCard: Card | null = null;
   private _recentCardIds: string[] = []; // Track recently reviewed cards
+  
+  // Study mode state
+  private _studyMode: StudyMode = 'loop';
+  
+  // Session statistics
+  private _sessionStartTime: number = Date.now();
+  private _sessionReviewCount: number = 0;
+  private _sessionNewCount: number = 0;
+  private _sessionCorrectCount: number = 0; // good + easy ratings
   
   // Cache index to avoid rebuilding on every card request
   private _cachedIndex: CardIndex | null = null;
   private _indexVersion: number = 0; // Increment on data changes
 
-  private constructor(panel: vscode.WebviewPanel, extensionUri: vscode.Uri, storage: JsonlStorage) {
+  private constructor(
+    panel: vscode.WebviewPanel, 
+    extensionUri: vscode.Uri, 
+    storage: JsonlStorage,
+    context: vscode.ExtensionContext
+  ) {
     this._panel = panel;
     this._extensionUri = extensionUri;
     this._storage = storage;
+    this._context = context;
+    
+    // Load saved study mode from globalState
+    this._studyMode = context.globalState.get<StudyMode>(STUDY_MODE_KEY, 'loop');
 
     // Set the webview content
     this._panel.webview.html = this._getWebviewContent();
@@ -44,7 +66,7 @@ export class FlashcardPanel {
     this._panel.onDidDispose(() => this.dispose(), null, this._disposables);
   }
 
-  public static createOrShow(extensionUri: vscode.Uri, storage: JsonlStorage) {
+  public static createOrShow(extensionUri: vscode.Uri, storage: JsonlStorage, context: vscode.ExtensionContext) {
     const column = vscode.ViewColumn.Beside;
 
     // If we already have a panel, show it
@@ -65,7 +87,7 @@ export class FlashcardPanel {
       }
     );
 
-    FlashcardPanel.currentPanel = new FlashcardPanel(panel, extensionUri, storage);
+    FlashcardPanel.currentPanel = new FlashcardPanel(panel, extensionUri, storage, context);
   }
 
   public dispose() {
@@ -75,6 +97,9 @@ export class FlashcardPanel {
     this._cachedIndex = null;
     this._currentCard = null;
     this._recentCardIds = [];
+    
+    // Reset session stats
+    this._resetSession();
 
     this._panel.dispose();
 
@@ -84,6 +109,13 @@ export class FlashcardPanel {
         disposable.dispose();
       }
     }
+  }
+
+  private _resetSession() {
+    this._sessionStartTime = Date.now();
+    this._sessionReviewCount = 0;
+    this._sessionNewCount = 0;
+    this._sessionCorrectCount = 0;
   }
 
   private async _handleMessage(message: unknown) {
@@ -96,8 +128,9 @@ export class FlashcardPanel {
 
     switch (msg.type) {
       case 'ui_ready':
-        // Send TTS settings first, then next card
+        // Send TTS settings first, then study mode, then next card
         await this._sendTtsSettings();
+        await this._sendStudyMode();
         await this._sendNextCard();
         break;
 
@@ -120,6 +153,14 @@ export class FlashcardPanel {
 
       case 'open_settings':
         vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash.tts');
+        break;
+
+      case 'get_study_mode':
+        await this._sendStudyMode();
+        break;
+
+      case 'set_study_mode':
+        await this._handleSetStudyMode(msg.mode);
         break;
 
       case 'refresh': {
@@ -172,6 +213,29 @@ export class FlashcardPanel {
     });
   }
 
+  private async _sendStudyMode() {
+    this._postMessage({
+      type: 'study_mode',
+      mode: this._studyMode,
+    });
+  }
+
+  private async _handleSetStudyMode(mode: StudyMode) {
+    this._studyMode = mode;
+    // Save to globalState for persistence within session
+    await this._context.globalState.update(STUDY_MODE_KEY, mode);
+    logDebug('Study mode changed to', mode);
+    
+    // Reset session stats when mode changes
+    this._resetSession();
+    
+    // Send confirmation back to UI
+    await this._sendStudyMode();
+    
+    // Get next card with new mode settings
+    await this._sendNextCard();
+  }
+
   private _addToRecentCards(cardId: string) {
     // Remove if already in list
     this._recentCardIds = this._recentCardIds.filter((id) => id !== cardId);
@@ -217,11 +281,17 @@ export class FlashcardPanel {
       logDebug('Cards loaded', index.cards.size);
       logDebug('Events processed');
       logDebug('Recent cards', this._recentCardIds.length);
+      logDebug('Study mode', this._studyMode);
+
+      // Determine scheduler options based on study mode
+      const loopMode = this._studyMode === 'loop';
+      const dueOnly = this._studyMode === 'dueOnly';
 
       // Use getNextCard with forgetting curve optimization
       // Pass recent cards to avoid immediate repetition
       const card = getNextCard(index, now, {
-        loopMode: true,
+        loopMode,
+        dueOnly,
         excludeCardId: this._currentCard?.id,
         recentCardIds: this._recentCardIds,
       });
@@ -239,10 +309,24 @@ export class FlashcardPanel {
         const srs = index.srsStates.get(card.id);
         this._postMessage({ type: 'card', card, srs });
       } else {
-        this._postMessage({
-          type: 'empty',
-          message: "📭 No cards yet! Select text and use 'Add to WordSlash' to create cards.",
-        });
+        // No more cards - check if we should show session complete
+        if (this._studyMode !== 'loop' && this._sessionReviewCount > 0) {
+          // Session complete for studyUntilEmpty or dueOnly mode
+          const stats: SessionStats = {
+            reviewed: this._sessionReviewCount,
+            newLearned: this._sessionNewCount,
+            correctRate: this._sessionReviewCount > 0 
+              ? this._sessionCorrectCount / this._sessionReviewCount 
+              : 0,
+            duration: Date.now() - this._sessionStartTime,
+          };
+          this._postMessage({ type: 'session_complete', stats });
+        } else {
+          this._postMessage({
+            type: 'empty',
+            message: "📭 No cards yet! Select text and use 'Add to WordSlash' to create cards.",
+          });
+        }
       }
     } catch (error) {
       logError('Error loading next card', error);
@@ -253,6 +337,19 @@ export class FlashcardPanel {
 
   private async _handleRateCard(cardId: string, rating: ReviewRating) {
     try {
+      // Track session statistics
+      this._sessionReviewCount++;
+      if (rating === 'good' || rating === 'easy') {
+        this._sessionCorrectCount++;
+      }
+      
+      // Check if this was a new card (first review)
+      const index = await this._getOrBuildIndex();
+      const currentSrs = index.srsStates.get(cardId);
+      if (currentSrs && currentSrs.reps === 0) {
+        this._sessionNewCount++;
+      }
+
       // Create and save review event
       const event = createReviewEvent({
         cardId,
@@ -265,17 +362,17 @@ export class FlashcardPanel {
       this._invalidateCache();
 
       // Rebuild index and SRS state
-      const index = await this._getOrBuildIndex();
+      const newIndex = await this._getOrBuildIndex();
 
       // Get current SRS state and calculate next
-      const currentSrs = index.srsStates.get(cardId);
-      if (currentSrs) {
+      const newSrs = newIndex.srsStates.get(cardId);
+      if (newSrs) {
         // Note: nextSrs calculation validates the SRS algorithm but index is already rebuilt
-        calculateNextState(currentSrs, rating, Date.now());
+        calculateNextState(newSrs, rating, Date.now());
         // Save updated index
         await this._storage.atomicWriteJson('index.json', {
           version: 1,
-          srsStates: Object.fromEntries(index.srsStates),
+          srsStates: Object.fromEntries(newIndex.srsStates),
           updatedAt: Date.now(),
         });
       }
@@ -758,6 +855,108 @@ export class FlashcardPanel {
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
     
+    .mode-select {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--vscode-button-secondaryForeground);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 12px;
+      border-radius: 20px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23888' d='M2 4l4 4 4-4'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+    }
+    
+    .mode-select:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+    
+    .mode-select:focus {
+      outline: none;
+      border-color: var(--accent-blue);
+    }
+    
+    .session-complete {
+      text-align: center;
+      padding: 60px 40px;
+      background: linear-gradient(145deg, 
+        var(--vscode-input-background) 0%, 
+        color-mix(in srgb, var(--vscode-input-background) 95%, #69f0ae) 100%);
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
+      max-width: 600px;
+      width: 100%;
+    }
+    
+    .session-complete h2 {
+      font-size: 4em;
+      margin-bottom: 20px;
+    }
+    
+    .session-complete h3 {
+      font-size: 1.8em;
+      margin-bottom: 30px;
+      background: linear-gradient(135deg, var(--accent-green) 0%, var(--accent-blue) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+      margin-bottom: 30px;
+    }
+    
+    .stat-item {
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 16px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .stat-value {
+      font-size: 2.5em;
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .stat-label {
+      font-size: 0.9em;
+      color: var(--vscode-descriptionForeground);
+      margin-top: 8px;
+    }
+    
+    .btn-continue {
+      background: var(--accent-gradient);
+      color: white;
+      padding: 14px 48px;
+      font-size: 16px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    
+    .btn-continue:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
+    }
+    
     .hidden {
       display: none;
     }
@@ -771,6 +970,11 @@ export class FlashcardPanel {
 </head>
 <body>
   <div class="toolbar">
+    <select id="mode-select" class="mode-select" onchange="setStudyMode(this.value)" title="Study Mode">
+      <option value="loop">🔄 Loop</option>
+      <option value="studyUntilEmpty">📚 Until Done</option>
+      <option value="dueOnly">⏰ Due Only</option>
+    </select>
     <button class="btn-toolbar" onclick="refresh()" title="Refresh data">🔄 Refresh</button>
     <button class="btn-toolbar" onclick="openSettings()" title="Settings">⚙️</button>
   </div>
@@ -838,6 +1042,30 @@ export class FlashcardPanel {
     <div id="empty-view" class="empty-state hidden">
       <h2>🎉</h2>
       <p id="empty-message">All done for today!</p>
+    </div>
+    
+    <div id="session-complete-view" class="session-complete hidden">
+      <h2>🎉</h2>
+      <h3>Today's Session Complete!</h3>
+      <div class="stats-grid">
+        <div class="stat-item">
+          <div class="stat-value" id="stat-reviewed">0</div>
+          <div class="stat-label">Cards Reviewed</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-new">0</div>
+          <div class="stat-label">New Cards Learned</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-correct">0%</div>
+          <div class="stat-label">Correct Rate</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-value" id="stat-duration">0m</div>
+          <div class="stat-label">Study Time</div>
+        </div>
+      </div>
+      <button class="btn-continue" onclick="continueStudy()">Continue Studying</button>
     </div>
   </div>
 
@@ -985,6 +1213,9 @@ export class FlashcardPanel {
           ttsSettings = message.settings;
           console.log('[WordSlash] TTS settings:', ttsSettings);
           break;
+        case 'study_mode':
+          updateModeSelector(message.mode);
+          break;
         case 'card':
           console.log('[WordSlash UI] Displaying card:', message.card.front.term);
           showCard(message.card, message.srs);
@@ -992,11 +1223,47 @@ export class FlashcardPanel {
         case 'empty':
           showEmpty(message.message);
           break;
+        case 'session_complete':
+          showSessionComplete(message.stats);
+          break;
         case 'error':
           showError(message.message);
           break;
       }
     });
+    
+    function updateModeSelector(mode) {
+      const selector = document.getElementById('mode-select');
+      if (selector) {
+        selector.value = mode;
+      }
+    }
+    
+    function setStudyMode(mode) {
+      vscode.postMessage({ type: 'set_study_mode', mode: mode });
+    }
+    
+    function showSessionComplete(stats) {
+      document.getElementById('card-view').classList.add('hidden');
+      document.getElementById('empty-view').classList.add('hidden');
+      document.getElementById('session-complete-view').classList.remove('hidden');
+      
+      // Update stats display
+      document.getElementById('stat-reviewed').textContent = stats.reviewed;
+      document.getElementById('stat-new').textContent = stats.newLearned;
+      document.getElementById('stat-correct').textContent = Math.round(stats.correctRate * 100) + '%';
+      
+      // Format duration
+      const minutes = Math.floor(stats.duration / 60000);
+      const seconds = Math.floor((stats.duration % 60000) / 1000);
+      document.getElementById('stat-duration').textContent = 
+        minutes > 0 ? minutes + 'm ' + seconds + 's' : seconds + 's';
+    }
+    
+    function continueStudy() {
+      // Switch to loop mode to continue studying
+      vscode.postMessage({ type: 'set_study_mode', mode: 'loop' });
+    }
     
     // Flag to track if we're transitioning to next card
     let isTransitioning = false;
@@ -1022,6 +1289,7 @@ export class FlashcardPanel {
       document.getElementById('card-front').classList.remove('hidden');
       document.getElementById('card-back').classList.add('hidden');
       document.getElementById('empty-view').classList.add('hidden');
+      document.getElementById('session-complete-view').classList.add('hidden');
       
       // === FRONT SIDE ===
       document.getElementById('term').textContent = card.front.term;
@@ -1123,6 +1391,7 @@ export class FlashcardPanel {
     function showEmpty(message) {
       document.getElementById('card-view').classList.add('hidden');
       document.getElementById('empty-view').classList.remove('hidden');
+      document.getElementById('session-complete-view').classList.add('hidden');
       document.getElementById('empty-message').textContent = message;
     }
     

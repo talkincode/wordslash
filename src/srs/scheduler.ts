@@ -17,6 +17,8 @@ export interface SchedulerOptions {
   todayNewCardCount?: number;
   /** Enable loop mode - continue with any card when no due cards */
   loopMode?: boolean;
+  /** Due only mode - only review due cards, skip new cards */
+  dueOnly?: boolean;
   /** Card ID to exclude from selection (e.g., current card) */
   excludeCardId?: string;
   /** Recently reviewed card IDs to avoid immediate repetition */
@@ -164,6 +166,7 @@ export function getNextCard(
     newCardsPerDay = 20, 
     todayNewCardCount = 0,
     loopMode = false,
+    dueOnly = false,
     excludeCardId,
     recentCardIds = []
   } = options;
@@ -193,8 +196,8 @@ export function getNextCard(
     return scoredDueCards[0].card;
   }
 
-  // Then try new cards if under limit
-  if (todayNewCardCount < newCardsPerDay) {
+  // Then try new cards if under limit (skip if dueOnly mode)
+  if (!dueOnly && todayNewCardCount < newCardsPerDay) {
     for (const cardId of index.newCards) {
       if (excludeCardId && cardId === excludeCardId) continue;
       

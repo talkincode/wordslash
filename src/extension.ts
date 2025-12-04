@@ -3,6 +3,7 @@ import { JsonlStorage } from './storage/storage';
 import { executeAddCard } from './commands/addCard';
 import { executeImportBulk } from './commands/importBulk';
 import { executeExportTemplate } from './commands/exportTemplate';
+import { executeExportBackup, executeImportBackup } from './commands/backup';
 import { FlashcardPanel } from './webview/panel';
 import { DashboardPanel } from './webview/dashboard';
 import { DashboardViewProvider } from './webview/dashboardViewProvider';
@@ -22,7 +23,7 @@ export function activate(context: vscode.ExtensionContext) {
   storage = new JsonlStorage(storagePath);
 
   // Register sidebar view provider
-  const dashboardViewProvider = new DashboardViewProvider(context.extensionUri, storage);
+  const dashboardViewProvider = new DashboardViewProvider(context.extensionUri, storage, context);
   context.subscriptions.push(
     vscode.window.registerWebviewViewProvider(DashboardViewProvider.viewType, dashboardViewProvider)
   );
@@ -30,14 +31,14 @@ export function activate(context: vscode.ExtensionContext) {
   // Register commands
   const openFlashcardsCommand = vscode.commands.registerCommand('wordslash.openFlashcards', () => {
     if (storage) {
-      FlashcardPanel.createOrShow(context.extensionUri, storage);
+      FlashcardPanel.createOrShow(context.extensionUri, storage, context);
     }
   });
 
   // Dashboard command
   const openDashboardCommand = vscode.commands.registerCommand('wordslash.openDashboard', () => {
     if (storage) {
-      DashboardPanel.createOrShow(context.extensionUri, storage);
+      DashboardPanel.createOrShow(context.extensionUri, storage, context);
     }
   });
 
@@ -50,12 +51,16 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
-  const exportBackupCommand = vscode.commands.registerCommand('wordslash.exportBackup', () => {
-    vscode.window.showInformationMessage('WordSlash: Export backup coming soon!');
+  const exportBackupCommand = vscode.commands.registerCommand('wordslash.exportBackup', async () => {
+    if (storage) {
+      await executeExportBackup(storage);
+    }
   });
 
-  const importBackupCommand = vscode.commands.registerCommand('wordslash.importBackup', () => {
-    vscode.window.showInformationMessage('WordSlash: Import backup coming soon!');
+  const importBackupCommand = vscode.commands.registerCommand('wordslash.importBackup', async () => {
+    if (storage) {
+      await executeImportBackup(storage);
+    }
   });
 
   // Bulk import command

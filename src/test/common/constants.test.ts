@@ -3,9 +3,13 @@
 import { describe, it, expect } from 'vitest';
 import {
   DAY_MS,
+  HOUR_MS,
   MATURE_INTERVAL_DAYS,
   INITIAL_EASE_FACTOR,
   MIN_EASE_FACTOR,
+  MAX_EASE_FACTOR,
+  MAX_INTERVAL_DAYS,
+  MIN_REVIEW_INTERVAL_MS,
   MAX_RECENT_CARDS,
   DEFAULT_NEW_CARDS_PER_DAY,
   DEFAULT_MAX_NODES,
@@ -20,6 +24,11 @@ describe('Constants', () => {
     it('should have correct DAY_MS value', () => {
       expect(DAY_MS).toBe(24 * 60 * 60 * 1000);
       expect(DAY_MS).toBe(86400000);
+    });
+
+    it('should have correct HOUR_MS value', () => {
+      expect(HOUR_MS).toBe(60 * 60 * 1000);
+      expect(HOUR_MS).toBe(3600000);
     });
   });
 
@@ -36,8 +45,21 @@ describe('Constants', () => {
       expect(MIN_EASE_FACTOR).toBe(1.3);
     });
 
+    it('should have correct MAX_EASE_FACTOR', () => {
+      expect(MAX_EASE_FACTOR).toBe(3.0);
+    });
+
     it('should have valid ease factor range', () => {
       expect(MIN_EASE_FACTOR).toBeLessThan(INITIAL_EASE_FACTOR);
+      expect(INITIAL_EASE_FACTOR).toBeLessThan(MAX_EASE_FACTOR);
+    });
+
+    it('should have correct MAX_INTERVAL_DAYS', () => {
+      expect(MAX_INTERVAL_DAYS).toBe(365);
+    });
+
+    it('should have correct MIN_REVIEW_INTERVAL_MS', () => {
+      expect(MIN_REVIEW_INTERVAL_MS).toBe(HOUR_MS);
     });
   });
 

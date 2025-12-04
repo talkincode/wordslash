@@ -128,6 +128,67 @@ describe('Webview Protocol', () => {
       });
     });
 
+    describe('set_study_mode message', () => {
+      it('should accept valid set_study_mode message with loop mode', () => {
+        expect(
+          isValidUiMessage({
+            type: 'set_study_mode',
+            mode: 'loop',
+          })
+        ).toBe(true);
+      });
+
+      it('should accept valid set_study_mode message with studyUntilEmpty mode', () => {
+        expect(
+          isValidUiMessage({
+            type: 'set_study_mode',
+            mode: 'studyUntilEmpty',
+          })
+        ).toBe(true);
+      });
+
+      it('should accept valid set_study_mode message with dueOnly mode', () => {
+        expect(
+          isValidUiMessage({
+            type: 'set_study_mode',
+            mode: 'dueOnly',
+          })
+        ).toBe(true);
+      });
+
+      it('should reject set_study_mode without mode', () => {
+        expect(
+          isValidUiMessage({
+            type: 'set_study_mode',
+          })
+        ).toBe(false);
+      });
+
+      it('should reject set_study_mode with invalid mode', () => {
+        expect(
+          isValidUiMessage({
+            type: 'set_study_mode',
+            mode: 'invalid',
+          })
+        ).toBe(false);
+      });
+
+      it('should reject set_study_mode with non-string mode', () => {
+        expect(
+          isValidUiMessage({
+            type: 'set_study_mode',
+            mode: 123,
+          })
+        ).toBe(false);
+      });
+    });
+
+    describe('get_study_mode message', () => {
+      it('should accept valid get_study_mode message', () => {
+        expect(isValidUiMessage({ type: 'get_study_mode' })).toBe(true);
+      });
+    });
+
     describe('invalid messages', () => {
       it('should reject null', () => {
         expect(isValidUiMessage(null)).toBe(false);

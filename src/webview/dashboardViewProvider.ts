@@ -7,7 +7,6 @@ import { buildIndex } from '../storage/indexer';
 import { calculateDashboardStats } from '../storage/stats';
 import { FlashcardPanel } from './panel';
 import { DashboardPanel } from './dashboard';
-import { generateSampleCards } from '../commands/devSampleData';
 import { logDebug, logError } from '../common/logger';
 
 export class DashboardViewProvider implements vscode.WebviewViewProvider {
@@ -17,7 +16,8 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly _extensionUri: vscode.Uri,
-    private readonly _storage: JsonlStorage
+    private readonly _storage: JsonlStorage,
+    private readonly _context: vscode.ExtensionContext
   ) {}
 
   public resolveWebviewView(
@@ -46,13 +46,19 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
           await this._sendStats();
           break;
         case 'startLearning':
-          FlashcardPanel.createOrShow(this._extensionUri, this._storage);
+          FlashcardPanel.createOrShow(this._extensionUri, this._storage, this._context);
           break;
         case 'openDashboard':
           DashboardPanel.createOrShow(this._extensionUri, this._storage);
           break;
         case 'openSettings':
           vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash');
+          break;
+        case 'exportBackup':
+          vscode.commands.executeCommand('wordslash.exportBackup');
+          break;
+        case 'importBackup':
+          vscode.commands.executeCommand('wordslash.importBackup');
           break;
       }
     });
@@ -75,20 +81,6 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       logDebug('Loading dashboard stats');
       const cards = await this._storage.readAllCards();
       logDebug('Cards loaded', cards.length);
-      
-      // Initialize sample data if no cards exist
-      if (cards.length === 0) {
-        logDebug('No cards found, initializing sample data');
-        const count = await generateSampleCards(this._storage);
-        logDebug('Created sample cards', count);
-        // Re-read cards after initialization
-        const newCards = await this._storage.readAllCards();
-        const events = await this._storage.readAllEvents();
-        const index = buildIndex(newCards, events);
-        const stats = calculateDashboardStats(index, events);
-        this._view.webview.postMessage({ type: 'stats', stats });
-        return;
-      }
       
       const events = await this._storage.readAllEvents();
       const index = buildIndex(cards, events);
@@ -332,6 +324,13 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       text-decoration: underline;
     }
     
+    .backup-links {
+      margin-top: 8px;
+      display: flex;
+      justify-content: center;
+      gap: 16px;
+    }
+    
     .loading {
       text-align: center;
       padding: 20px;
@@ -411,6 +410,11 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     <div class="quick-links">
       <a class="quick-link" onclick="openSettings()">⚙️ Settings</a>
       <a class="quick-link" onclick="refresh()">🔄 Refresh</a>
+    </div>
+    
+    <div class="backup-links">
+      <a class="quick-link" onclick="exportBackup()">📤 Export Backup</a>
+      <a class="quick-link" onclick="importBackup()">📥 Import Backup</a>
     </div>
   </div>
 
@@ -506,6 +510,14 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       document.getElementById('loading').style.display = 'block';
       document.getElementById('content').style.display = 'none';
       vscode.postMessage({ type: 'refresh' });
+    }
+    
+    function exportBackup() {
+      vscode.postMessage({ type: 'exportBackup' });
+    }
+    
+    function importBackup() {
+      vscode.postMessage({ type: 'importBackup' });
     }
   </script>
 </body>

@@ -9,6 +9,17 @@ import type {
   KnowledgeGraph,
 } from '../storage/schema';
 
+// Study mode types
+export type StudyMode = 'loop' | 'studyUntilEmpty' | 'dueOnly';
+
+// Session completion statistics
+export interface SessionStats {
+  reviewed: number;
+  newLearned: number;
+  correctRate: number; // good + easy / total
+  duration: number; // session duration in ms
+}
+
 // UI → Extension messages
 export type UiReadyMessage = { type: 'ui_ready' };
 export type GetNextCardMessage = { type: 'get_next_card' };
@@ -35,6 +46,10 @@ export type OpenSettingsMessage = { type: 'open_settings' };
 export type GetTtsSettingsMessage = { type: 'get_tts_settings' };
 export type RefreshMessage = { type: 'refresh' };
 
+// Study mode messages
+export type SetStudyModeMessage = { type: 'set_study_mode'; mode: StudyMode };
+export type GetStudyModeMessage = { type: 'get_study_mode' };
+
 export type UiToExtensionMessage =
   | UiReadyMessage
   | GetNextCardMessage
@@ -47,7 +62,9 @@ export type UiToExtensionMessage =
   | StartFlashcardStudyMessage
   | OpenSettingsMessage
   | GetTtsSettingsMessage
-  | RefreshMessage;
+  | RefreshMessage
+  | SetStudyModeMessage
+  | GetStudyModeMessage;
 
 // Extension → UI messages
 export type CardMessage = { type: 'card'; card: Card; srs?: SrsState };
@@ -78,6 +95,18 @@ export type TtsSettingsMessage = {
   };
 };
 
+// Study mode response message
+export type StudyModeMessage = {
+  type: 'study_mode';
+  mode: StudyMode;
+};
+
+// Session complete message (shown when studyUntilEmpty/dueOnly mode completes)
+export type SessionCompleteMessage = {
+  type: 'session_complete';
+  stats: SessionStats;
+};
+
 export type ExtensionToUiMessage =
   | CardMessage
   | EmptyMessage
@@ -85,7 +114,9 @@ export type ExtensionToUiMessage =
   | DashboardStatsMessage
   | KnowledgeGraphMessage
   | CardDetailsMessage
-  | TtsSettingsMessage;
+  | TtsSettingsMessage
+  | StudyModeMessage
+  | SessionCompleteMessage;
 
 /**
  * Validate UI to Extension message
@@ -106,7 +137,14 @@ export function isValidUiMessage(msg: unknown): msg is UiToExtensionMessage {
     case 'open_settings':
     case 'get_tts_settings':
     case 'refresh':
+    case 'get_study_mode':
       return true;
+
+    case 'set_study_mode':
+      return (
+        typeof m.mode === 'string' &&
+        ['loop', 'studyUntilEmpty', 'dueOnly'].includes(m.mode)
+      );
 
     case 'get_knowledge_graph':
       // Optional parameters are validated loosely

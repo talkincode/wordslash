@@ -2,7 +2,14 @@
 // PURE MODULE: No vscode imports allowed
 
 import type { ReviewRating, SrsState } from '../storage/schema';
-import { INITIAL_EASE_FACTOR, MIN_EASE_FACTOR, DAY_MS } from '../common/constants';
+import {
+  INITIAL_EASE_FACTOR,
+  MIN_EASE_FACTOR,
+  MAX_EASE_FACTOR,
+  MAX_INTERVAL_DAYS,
+  MIN_REVIEW_INTERVAL_MS,
+  DAY_MS,
+} from '../common/constants';
 
 /**
  * SM-2 Rating to quality mapping (fixed, do not change)
@@ -55,15 +62,21 @@ export function calculateNextState(
 ): SrsState {
   const quality = ratingToQuality(rating);
 
+  const { lastReviewAt } = current;
   let { reps, intervalDays, easeFactor, lapses } = current;
 
+  // Check if this is a "consolidation review" (too soon after last review)
+  // In loop mode, don't update interval/reps for reviews within MIN_REVIEW_INTERVAL
+  const timeSinceLastReview = lastReviewAt ? reviewTime - lastReviewAt : Infinity;
+  const isConsolidationReview = timeSinceLastReview < MIN_REVIEW_INTERVAL_MS && reps > 0;
+
   if (quality < 3) {
-    // Failed review - reset
+    // Failed review - always reset (even in consolidation)
     reps = 0;
     intervalDays = 1;
     lapses += 1;
-  } else {
-    // Successful review
+  } else if (!isConsolidationReview) {
+    // Successful review - only update if not consolidation
     reps += 1;
 
     if (reps === 1) {
@@ -74,10 +87,14 @@ export function calculateNextState(
       intervalDays = Math.round(intervalDays * easeFactor);
     }
 
-    // Update ease factor
+    // Cap interval to prevent runaway values
+    intervalDays = Math.min(intervalDays, MAX_INTERVAL_DAYS);
+
+    // Update ease factor with caps
     easeFactor = easeFactor + (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-    easeFactor = Math.max(MIN_EASE_FACTOR, easeFactor);
+    easeFactor = Math.max(MIN_EASE_FACTOR, Math.min(MAX_EASE_FACTOR, easeFactor));
   }
+  // If consolidation review with quality >= 3, keep current interval/reps unchanged
 
   const dueAt = reviewTime + intervalDays * DAY_MS;
 

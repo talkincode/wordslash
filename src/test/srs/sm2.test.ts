@@ -4,6 +4,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ratingToQuality, calculateNextState, createInitialSrsState } from '../../srs/sm2';
 import type { SrsState, ReviewRating } from '../../storage/schema';
+import { MIN_REVIEW_INTERVAL_MS, MAX_INTERVAL_DAYS, MAX_EASE_FACTOR } from '../../common/constants';
 
 describe('SM-2 Algorithm', () => {
   const DAY_MS = 86400000;
@@ -193,6 +194,22 @@ describe('SM-2 Algorithm', () => {
         expect(state.easeFactor).toBeGreaterThanOrEqual(1.3);
       });
 
+      it('should not let EF exceed MAX_EASE_FACTOR (3.0)', () => {
+        let state: SrsState = {
+          ...initialState,
+          reps: 3,
+          intervalDays: 10,
+          easeFactor: 2.9,
+        };
+
+        // Multiple easy reviews should increase EF but not above MAX_EASE_FACTOR
+        for (let i = 0; i < 10; i++) {
+          state = calculateNextState(state, 'easy', Date.now() + i * DAY_MS);
+        }
+
+        expect(state.easeFactor).toBeLessThanOrEqual(MAX_EASE_FACTOR);
+      });
+
       it('should not reset EF on "again"', () => {
         const state: SrsState = {
           ...initialState,
@@ -306,6 +323,93 @@ describe('SM-2 Algorithm', () => {
       state = calculateNextState(state, 'easy', now + 7 * DAY_MS);
       expect(state.reps).toBe(3);
       // EF should have increased from the easy rating
+    });
+  });
+
+  describe('consolidation reviews (Loop mode protection)', () => {
+    const reviewedState: SrsState = {
+      cardId: 'test',
+      dueAt: 0,
+      intervalDays: 6,
+      easeFactor: 2.5,
+      reps: 2,
+      lapses: 0,
+      lastReviewAt: Date.now(),
+    };
+
+    it('should not update interval/reps for reviews within MIN_REVIEW_INTERVAL', () => {
+      const now = Date.now();
+      const state = { ...reviewedState, lastReviewAt: now };
+      
+      // Review again after just 30 minutes (within 1 hour)
+      const next = calculateNextState(state, 'good', now + 30 * 60 * 1000);
+
+      expect(next.reps).toBe(2); // Unchanged
+      expect(next.intervalDays).toBe(6); // Unchanged
+      expect(next.easeFactor).toBe(2.5); // Unchanged
+    });
+
+    it('should update normally after MIN_REVIEW_INTERVAL has passed', () => {
+      const now = Date.now();
+      const state = { ...reviewedState, lastReviewAt: now };
+      
+      // Review after 2 hours (beyond MIN_REVIEW_INTERVAL)
+      const next = calculateNextState(state, 'good', now + 2 * 60 * 60 * 1000);
+
+      expect(next.reps).toBe(3); // Incremented
+      expect(next.intervalDays).toBe(15); // 6 * 2.5 = 15
+    });
+
+    it('should still reset on "again" even in consolidation window', () => {
+      const now = Date.now();
+      const state = { ...reviewedState, lastReviewAt: now };
+      
+      // "again" should always reset, even if within MIN_REVIEW_INTERVAL
+      const next = calculateNextState(state, 'again', now + 30 * 60 * 1000);
+
+      expect(next.reps).toBe(0);
+      expect(next.intervalDays).toBe(1);
+      expect(next.lapses).toBe(1);
+    });
+
+    it('should allow first review even without lastReviewAt', () => {
+      const now = Date.now();
+      const newCard: SrsState = {
+        cardId: 'new',
+        dueAt: now,
+        intervalDays: 0,
+        easeFactor: 2.5,
+        reps: 0,
+        lapses: 0,
+        // No lastReviewAt
+      };
+      
+      const next = calculateNextState(newCard, 'good', now);
+
+      expect(next.reps).toBe(1);
+      expect(next.intervalDays).toBe(1);
+    });
+  });
+
+  describe('interval cap', () => {
+    it('should not let interval exceed MAX_INTERVAL_DAYS (365)', () => {
+      let state: SrsState = {
+        cardId: 'test',
+        dueAt: 0,
+        intervalDays: 200,
+        easeFactor: 2.5,
+        reps: 10,
+        lapses: 0,
+        lastReviewAt: 0,
+      };
+
+      const now = Date.now();
+      // Review with enough time gap
+      state = calculateNextState(state, 'good', now);
+
+      // 200 * 2.5 = 500, but should be capped at 365
+      expect(state.intervalDays).toBeLessThanOrEqual(MAX_INTERVAL_DAYS);
+      expect(state.intervalDays).toBe(MAX_INTERVAL_DAYS);
     });
   });
 });
