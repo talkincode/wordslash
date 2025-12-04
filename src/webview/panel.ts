@@ -377,14 +377,18 @@ export class FlashcardPanel {
     }
     
     .example-container {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 12px;
+      margin-top: 9px;
       margin-bottom: 12px;
       padding: 20px 24px;
       background-color: var(--vscode-textBlockQuote-background);
       border-radius: 8px;
+    }
+    
+    .example-header {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
     }
     
     .example {
@@ -395,23 +399,23 @@ export class FlashcardPanel {
     }
     
     .example-cn {
-      font-size: 1.4em;
-      line-height: 1.6;
+      font-size: 1.1em;
+      line-height: 1.5;
       color: var(--vscode-descriptionForeground);
-      margin-bottom: 24px;
-      padding: 10px 24px;
+      margin-top: 8px;
+      text-align: center;
+      opacity: 0.9;
     }
     
     .back-content {
       margin-top: 24px;
-      padding-top: 24px;
-      border-top: 2px solid var(--vscode-input-border);
     }
     
     .translation {
-      font-size: 2.2em;
-      margin-bottom: 16px;
-      font-weight: 600;
+      font-size: 1.8em;
+      margin-bottom: 7px;
+      ont-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-weight: 500;
     }
     
     .explanation {
@@ -557,10 +561,6 @@ export class FlashcardPanel {
         <button class="btn-speak btn-speak-small" onclick="speakTerm()" title="Pronounce term">🔊</button>
       </div>
       <div class="morphemes" id="morphemes"></div>
-      <div class="example-container" id="example-container">
-        <div class="example" id="example"></div>
-        <button class="btn-speak btn-speak-small" onclick="speakExample()" title="Pronounce example">🔊</button>
-      </div>
       
       <div id="front-buttons" class="buttons">
         <button class="btn-reveal" onclick="revealBack()">Show Answer</button>
@@ -568,18 +568,27 @@ export class FlashcardPanel {
       
       <div id="back-content" class="back-content hidden">
         <div class="translation" id="translation"></div>
+        <div id="back-buttons" class="buttons">
+          <button class="btn-again" onclick="rate('again')">Again</button>
+          <button class="btn-hard" onclick="rate('hard')">Hard</button>
+          <button class="btn-good" onclick="rate('good')">Good</button>
+          <button class="btn-easy" onclick="rate('easy')">Easy</button>
+        </div>
+      </div>
+      
+      <div class="example-container" id="example-container">
+        <div class="example-header">
+          <div class="example" id="example"></div>
+          <button class="btn-speak btn-speak-small" onclick="speakExample()" title="Pronounce term">🔊</button>
+        </div>
         <div class="example-cn" id="example-cn"></div>
+      </div>
+      
+      <div class="back-content-extra hidden">
         <div class="explanation" id="explanation"></div>
         <div class="explanation-cn" id="explanation-cn"></div>
         <div class="synonyms" id="synonyms"></div>
         <div class="antonyms" id="antonyms"></div>
-      </div>
-      
-      <div id="back-buttons" class="buttons hidden">
-        <button class="btn-again" onclick="rate('again')">Again</button>
-        <button class="btn-hard" onclick="rate('hard')">Hard</button>
-        <button class="btn-good" onclick="rate('good')">Good</button>
-        <button class="btn-easy" onclick="rate('easy')">Easy</button>
       </div>
     </div>
     
@@ -669,11 +678,12 @@ export class FlashcardPanel {
       // Prepare back (including example Chinese translation)
       const back = card.back || {};
       
-      document.getElementById('translation').textContent = back.translation || '(no translation)';
+      // Example Chinese - prepare but keep hidden until back is revealed
+      const exampleCnEl = document.getElementById('example-cn');
+      exampleCnEl.textContent = card.front.exampleCn || '';
+      // Will be shown when back-content is revealed
       
-      // Example Chinese goes to back
-      document.getElementById('example-cn').textContent = card.front.exampleCn || '';
-      document.getElementById('example-cn').classList.toggle('hidden', !card.front.exampleCn);
+      document.getElementById('translation').textContent = back.translation || '(no translation)';
       
       document.getElementById('explanation').textContent = back.explanation || '';
       document.getElementById('explanation').classList.toggle('hidden', !back.explanation);
@@ -701,7 +711,10 @@ export class FlashcardPanel {
       // Reset to front view
       document.getElementById('front-buttons').classList.remove('hidden');
       document.getElementById('back-content').classList.add('hidden');
-      document.getElementById('back-buttons').classList.add('hidden');
+      document.querySelector('.back-content-extra').classList.add('hidden');
+      
+      // Hide example Chinese translation on front
+      exampleCnEl.classList.add('hidden');
       
       // Auto-pronounce when card appears (if enabled)
       if (ttsSettings.autoPlay) {
@@ -872,7 +885,13 @@ export class FlashcardPanel {
       
       document.getElementById('front-buttons').classList.add('hidden');
       document.getElementById('back-content').classList.remove('hidden');
-      document.getElementById('back-buttons').classList.remove('hidden');
+      document.querySelector('.back-content-extra').classList.remove('hidden');
+      
+      // Show example Chinese translation when revealing back
+      const exampleCnEl = document.getElementById('example-cn');
+      if (currentCard.front.exampleCn) {
+        exampleCnEl.classList.remove('hidden');
+      }
       
       // Auto-pronounce when revealing back (if enabled)
       if (ttsSettings.autoPlay) {
@@ -894,7 +913,6 @@ export class FlashcardPanel {
     }
     
     function refresh() {
-      console.log('[WordSlash UI] Refresh button clicked');
       vscode.postMessage({ type: 'refresh' });
     }
     
