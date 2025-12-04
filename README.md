@@ -177,88 +177,154 @@ Ctrl+Shift+P → WordSlash: Import Backup → Select backup file
 
 ## 🤖 MCP Server
 
-WordSlash includes an MCP (Model Context Protocol) Server that allows AI assistants like Claude Desktop to manage your vocabulary cards.
+WordSlash includes an MCP (Model Context Protocol) Server that allows AI assistants like **Claude Desktop**, **VS Code Copilot**, and other MCP-compatible clients to manage your vocabulary cards through natural language.
 
-### Installation
+### What is MCP?
 
-```bash
-cd scripts/mcp-server
-npm install
-npm run build
-```
+MCP (Model Context Protocol) is an open protocol that enables AI assistants to interact with external tools and data sources. With WordSlash MCP Server, you can:
 
-### Configure Claude Desktop
+- 📝 **Add vocabulary cards** by simply chatting with AI
+- 🔍 **Search and browse** your word collection
+- ✏️ **Update cards** with synonyms, antonyms, examples
+- 📊 **View statistics** and learning progress
+- 🕸️ **Explore relationships** between words
 
-Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+### Quick Start with npx (Recommended)
+
+The easiest way to use WordSlash MCP - no installation required!
+
+#### Claude Desktop Configuration
+
+Edit `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) or `%APPDATA%/Claude/claude_desktop_config.json` (Windows):
 
 ```json
 {
   "mcpServers": {
     "wordslash": {
-      "command": "node",
-      "args": ["/path/to/wordslash/scripts/mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "wordslash-mcp"]
+    }
+  }
+}
+```
+
+#### With Custom Storage Path
+
+```json
+{
+  "mcpServers": {
+    "wordslash": {
+      "command": "npx",
+      "args": ["-y", "wordslash-mcp"],
       "env": {
-        "WORDSLASH_STORAGE_PATH": "/optional/custom/path"
+        "WORDSLASH_STORAGE_PATH": "/path/to/your/wordslash/data"
       }
     }
   }
 }
 ```
 
-**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+> 💡 **Tip**: To share data with VS Code extension, set `WORDSLASH_STORAGE_PATH` to:
+> - **macOS**: `~/Library/Application Support/Code/User/globalStorage/wordslash.wordslash`
+> - **Windows**: `%APPDATA%/Code/User/globalStorage/wordslash.wordslash`
+> - **Linux**: `~/.config/Code/User/globalStorage/wordslash.wordslash`
 
-### Configure VS Code (Copilot / Continue)
+### VS Code Integration
 
-For VS Code with GitHub Copilot or Continue extension:
+For VS Code with GitHub Copilot Chat or Continue extension, add to your MCP settings:
 
 ```json
 {
   "mcpServers": [
     {
       "name": "wordslash",
-      "command": "node",
-      "args": ["/path/to/wordslash/scripts/mcp-server/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "wordslash-mcp"]
     }
   ]
 }
 ```
 
-### Available MCP Tools
+### Available Tools
 
 | Tool | Description |
 | ---- | ----------- |
-| `create_card` | Create a vocabulary card with term, translation, examples, etc. |
-| `list_cards` | List all cards (with optional search/tag filter) |
-| `get_card` | Get a card by ID or term |
-| `update_card` | Update an existing card |
+| `create_card` | Create a vocabulary card with term, translation, phonetic, examples, synonyms, antonyms, tags |
+| `list_cards` | List all cards with optional search term or tag filter |
+| `get_card` | Get a single card by ID or term |
+| `update_card` | Update card fields (translation, examples, synonyms, etc.) |
 | `delete_card` | Soft delete a card |
-| `delete_cards_batch` | Batch delete cards |
-| `list_events` | List review events (learning history) |
-| `get_index` | Get index status (card count, due count) |
-| `get_dashboard_stats` | Get comprehensive statistics |
+| `delete_cards_batch` | Batch delete by IDs, search term, or tag |
+| `list_events` | View review history (learning events) |
+| `get_index` | Get index status (total cards, due cards, new cards) |
+| `get_dashboard_stats` | Get comprehensive statistics (retention rate, streak, etc.) |
 | `generate_knowledge_graph` | Generate vocabulary relationship graph |
 
-### Example Usage with Claude
+### Usage Examples
+
+#### Adding a Word
 
 ```
-User: Add the word "ephemeral" with translation "短暂的" and example "Fame is ephemeral."
+You: Add "ephemeral" - it means "短暂的", example: "Fame is ephemeral."
 
 Claude: I'll create a vocabulary card for "ephemeral".
-[Uses create_card tool]
-✓ Card created successfully!
+✓ Created card:
+  - Term: ephemeral
+  - Translation: 短暂的
+  - Example: Fame is ephemeral.
+```
 
-User: What words do I have with the tag "GRE"?
+#### Adding with Full Details
 
-Claude: Let me check your vocabulary cards.
-[Uses list_cards tool with tag filter]
-You have 15 cards tagged with "GRE": ephemeral, ubiquitous, ...
+```
+You: Add "ubiquitous" with:
+- Translation: 无处不在的
+- Phonetic: /juːˈbɪk.wɪ.təs/
+- Example: "Smartphones have become ubiquitous."
+- Synonyms: omnipresent, pervasive
+- Tags: GRE, tech
+
+Claude: ✓ Created card for "ubiquitous" with all details!
+```
+
+#### Searching Cards
+
+```
+You: Show me all my GRE words
+
+Claude: Found 15 cards with tag "GRE":
+1. ephemeral - 短暂的
+2. ubiquitous - 无处不在的
+3. pragmatic - 务实的
+...
+```
+
+#### Updating a Card
+
+```
+You: Add synonyms "fleeting, transient" to ephemeral
+
+Claude: ✓ Updated "ephemeral" with new synonyms!
+```
+
+#### Checking Progress
+
+```
+You: How's my vocabulary learning going?
+
+Claude: Here's your learning stats:
+📊 Total Cards: 156
+📅 Due Today: 12
+🔥 Streak: 7 days
+🎯 Retention Rate: 85%
+✅ Mastered: 45 cards
 ```
 
 ### Environment Variables
 
 | Variable | Description | Default |
 | -------- | ----------- | ------- |
-| `WORDSLASH_STORAGE_PATH` | Custom storage path | VS Code globalStorage |
+| `WORDSLASH_STORAGE_PATH` | Custom storage directory | `~/.wordslash` (standalone) or VS Code globalStorage |
 
 ---
 

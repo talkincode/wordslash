@@ -179,88 +179,154 @@ Ctrl+Shift+P → WordSlash: Import Backup → 选择备份文件
 
 ## 🤖 MCP 服务
 
-WordSlash 包含 MCP (Model Context Protocol) 服务，允许 Claude Desktop 等 AI 助手管理你的词汇卡片。
+WordSlash 包含 MCP (Model Context Protocol) 服务，允许 **Claude Desktop**、**VS Code Copilot** 等 AI 助手通过自然语言管理你的词汇卡片。
 
-### 安装
+### 什么是 MCP？
 
-```bash
-cd scripts/mcp-server
-npm install
-npm run build
-```
+MCP（模型上下文协议）是一个开放协议，让 AI 助手能够与外部工具和数据源交互。通过 WordSlash MCP 服务，你可以：
 
-### 配置 Claude Desktop
+- 📝 **通过对话添加词汇卡片**
+- 🔍 **搜索和浏览** 你的单词库
+- ✏️ **更新卡片**，添加同义词、反义词、例句
+- 📊 **查看统计** 和学习进度
+- 🕸️ **探索词汇关系** 图谱
 
-在 `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) 中添加：
+### 使用 npx 快速启动（推荐）
+
+最简单的方式，无需安装！
+
+#### 配置 Claude Desktop
+
+编辑 `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS) 或 `%APPDATA%/Claude/claude_desktop_config.json` (Windows)：
 
 ```json
 {
   "mcpServers": {
     "wordslash": {
-      "command": "node",
-      "args": ["/path/to/wordslash/scripts/mcp-server/dist/index.js"],
+      "command": "npx",
+      "args": ["-y", "wordslash-mcp"]
+    }
+  }
+}
+```
+
+#### 使用自定义存储路径
+
+```json
+{
+  "mcpServers": {
+    "wordslash": {
+      "command": "npx",
+      "args": ["-y", "wordslash-mcp"],
       "env": {
-        "WORDSLASH_STORAGE_PATH": "/可选/自定义/路径"
+        "WORDSLASH_STORAGE_PATH": "/你的/wordslash/数据/路径"
       }
     }
   }
 }
 ```
 
-**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+> 💡 **提示**：如需与 VS Code 扩展共享数据，将 `WORDSLASH_STORAGE_PATH` 设置为：
+> - **macOS**: `~/Library/Application Support/Code/User/globalStorage/wordslash.wordslash`
+> - **Windows**: `%APPDATA%/Code/User/globalStorage/wordslash.wordslash`
+> - **Linux**: `~/.config/Code/User/globalStorage/wordslash.wordslash`
 
-### 配置 VS Code (Copilot / Continue)
+### VS Code 集成
 
-对于 VS Code 中的 GitHub Copilot 或 Continue 扩展：
+对于 VS Code 中的 GitHub Copilot Chat 或 Continue 扩展：
 
 ```json
 {
   "mcpServers": [
     {
       "name": "wordslash",
-      "command": "node",
-      "args": ["/path/to/wordslash/scripts/mcp-server/dist/index.js"]
+      "command": "npx",
+      "args": ["-y", "wordslash-mcp"]
     }
   ]
 }
 ```
 
-### 可用的 MCP 工具
+### 可用工具
 
 | 工具 | 说明 |
 | ---- | ---- |
-| `create_card` | 创建词汇卡片（包含词汇、翻译、例句等） |
-| `list_cards` | 列出所有卡片（支持搜索/标签过滤） |
-| `get_card` | 通过 ID 或词汇获取卡片 |
-| `update_card` | 更新现有卡片 |
+| `create_card` | 创建词汇卡片（词汇、翻译、音标、例句、同义词、反义词、标签） |
+| `list_cards` | 列出所有卡片（支持搜索词或标签过滤） |
+| `get_card` | 通过 ID 或词汇获取单张卡片 |
+| `update_card` | 更新卡片字段（翻译、例句、同义词等） |
 | `delete_card` | 软删除卡片 |
-| `delete_cards_batch` | 批量删除卡片 |
-| `list_events` | 列出复习事件（学习历史） |
-| `get_index` | 获取索引状态（卡片数、待复习数） |
-| `get_dashboard_stats` | 获取完整统计数据 |
+| `delete_cards_batch` | 批量删除（按 ID、搜索词或标签） |
+| `list_events` | 查看复习历史（学习事件） |
+| `get_index` | 获取索引状态（总卡片数、待复习数、新卡片数） |
+| `get_dashboard_stats` | 获取完整统计（保留率、连续天数等） |
 | `generate_knowledge_graph` | 生成词汇关系图谱 |
 
-### 与 Claude 的对话示例
+### 使用示例
+
+#### 添加单词
 
 ```
-用户: 添加单词 "ephemeral"，翻译是 "短暂的"，例句 "Fame is ephemeral."
+你: 添加 "ephemeral"，意思是 "短暂的"，例句："Fame is ephemeral."
 
 Claude: 我来为你创建 "ephemeral" 的词汇卡片。
-[使用 create_card 工具]
-✓ 卡片创建成功！
+✓ 已创建卡片：
+  - 词汇：ephemeral
+  - 翻译：短暂的
+  - 例句：Fame is ephemeral.
+```
 
-用户: 我有哪些标签是 "GRE" 的单词？
+#### 添加详细信息
 
-Claude: 让我查看你的词汇卡片。
-[使用 list_cards 工具并按标签过滤]
-你有 15 张标记为 "GRE" 的卡片：ephemeral、ubiquitous...
+```
+你: 添加 "ubiquitous"：
+- 翻译：无处不在的
+- 音标：/juːˈbɪk.wɪ.təs/
+- 例句："Smartphones have become ubiquitous."
+- 同义词：omnipresent, pervasive
+- 标签：GRE, 科技
+
+Claude: ✓ 已创建 "ubiquitous" 的完整卡片！
+```
+
+#### 搜索卡片
+
+```
+你: 显示我所有的 GRE 单词
+
+Claude: 找到 15 张标记为 "GRE" 的卡片：
+1. ephemeral - 短暂的
+2. ubiquitous - 无处不在的
+3. pragmatic - 务实的
+...
+```
+
+#### 更新卡片
+
+```
+你: 给 ephemeral 添加同义词 "fleeting, transient"
+
+Claude: ✓ 已更新 "ephemeral"，添加了新的同义词！
+```
+
+#### 查看学习进度
+
+```
+你: 我的词汇学习情况怎么样？
+
+Claude: 这是你的学习统计：
+📊 总卡片数：156
+📅 今日待复习：12
+🔥 连续学习：7 天
+🎯 保留率：85%
+✅ 已掌握：45 张
 ```
 
 ### 环境变量
 
 | 变量 | 说明 | 默认值 |
 | ---- | ---- | ------ |
-| `WORDSLASH_STORAGE_PATH` | 自定义存储路径 | VS Code globalStorage |
+| `WORDSLASH_STORAGE_PATH` | 自定义存储目录 | `~/.wordslash`（独立运行）或 VS Code globalStorage |
 
 ---
 
