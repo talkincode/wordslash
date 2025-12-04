@@ -257,8 +257,10 @@ export interface DashboardStats {
     good: number;
     easy: number;
   };
-  /** Reviews per day (last 30 days) */
+  /** Reviews per day (last 90 days for heatmap) */
   reviewsPerDay: Array<{ date: string; count: number }>;
+  /** Retention rate history (last 30 days with 7-day rolling window) */
+  retentionHistory: Array<{ date: string; rate: number }>;
 }
 
 // ============================================

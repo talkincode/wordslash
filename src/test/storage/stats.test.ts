@@ -136,14 +136,14 @@ describe('Dashboard Statistics', () => {
       expect(stats.totalReviews).toBe(3);
     });
 
-    it('should generate reviews per day for last 30 days', () => {
+    it('should generate reviews per day for last 90 days', () => {
       const cards = [createTestCard()];
       const events: ReviewEvent[] = [];
       const index = buildIndex(cards, events);
       const stats = calculateDashboardStats(index, events);
 
-      expect(stats.reviewsPerDay).toHaveLength(30);
-      expect(stats.reviewsPerDay[29].date).toBe('2024-01-15'); // Today
+      expect(stats.reviewsPerDay).toHaveLength(90);
+      expect(stats.reviewsPerDay[89].date).toBe('2024-01-15'); // Today
     });
 
     it('should calculate streak correctly', () => {
@@ -176,6 +176,40 @@ describe('Dashboard Statistics', () => {
       const stats = calculateDashboardStats(index, events);
 
       expect(stats.currentStreak).toBe(0);
+    });
+
+    it('should generate retention history for last 30 days', () => {
+      const cards = [createTestCard()];
+      const events: ReviewEvent[] = [];
+      const index = buildIndex(cards, events);
+      const stats = calculateDashboardStats(index, events);
+
+      expect(stats.retentionHistory).toHaveLength(30);
+      expect(stats.retentionHistory[29].date).toBe('2024-01-15'); // Today
+      expect(stats.retentionHistory[29].rate).toBe(0); // No events = 0 rate
+    });
+
+    it('should calculate retention history with rolling window', () => {
+      const now = Date.now();
+      const day = 24 * 60 * 60 * 1000;
+      
+      const cards = [createTestCard()];
+      const events: ReviewEvent[] = [
+        // Today: good ratings
+        createTestEvent({ id: '1', ts: now, rating: 'good' }),
+        createTestEvent({ id: '2', ts: now, rating: 'easy' }),
+        // Yesterday: mixed
+        createTestEvent({ id: '3', ts: now - day, rating: 'again' }),
+        createTestEvent({ id: '4', ts: now - day, rating: 'good' }),
+      ];
+      const index = buildIndex(cards, events);
+      const stats = calculateDashboardStats(index, events);
+
+      expect(stats.retentionHistory).toHaveLength(30);
+      // With 7-day rolling window, today's retention should include events from last 7 days
+      const todayRetention = stats.retentionHistory[29].rate;
+      // 3 good/easy out of 4 total = 0.75
+      expect(todayRetention).toBe(0.75);
     });
   });
 });

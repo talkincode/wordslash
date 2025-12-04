@@ -66,8 +66,11 @@ export function calculateDashboardStats(
   // Calculate streak
   const currentStreak = calculateStreak(events);
   
-  // Reviews per day (last 30 days)
-  const reviewsPerDay = calculateReviewsPerDay(events, 30);
+  // Reviews per day (last 90 days for heatmap)
+  const reviewsPerDay = calculateReviewsPerDay(events, 90);
+  
+  // Retention history (last 30 days rolling window)
+  const retentionHistory = calculateRetentionHistory(events, 30);
   
   return {
     totalCards,
@@ -83,6 +86,7 @@ export function calculateDashboardStats(
     cardsByType,
     ratingsDistribution,
     reviewsPerDay,
+    retentionHistory,
   };
 }
 
@@ -145,6 +149,51 @@ function calculateReviewsPerDay(events: ReviewEvent[], days: number): Array<{ da
       date,
       count: countByDate.get(date) || 0,
     });
+  }
+  
+  return result;
+}
+
+/**
+ * Calculate retention rate history for the last N days
+ * Uses a 7-day rolling window for smoothing
+ */
+function calculateRetentionHistory(events: ReviewEvent[], days: number): Array<{ date: string; rate: number }> {
+  const result: Array<{ date: string; rate: number }> = [];
+  
+  // Group events by date
+  const eventsByDate = new Map<string, ReviewEvent[]>();
+  for (const event of events) {
+    const date = new Date(event.ts).toISOString().split('T')[0];
+    if (!eventsByDate.has(date)) {
+      eventsByDate.set(date, []);
+    }
+    eventsByDate.get(date)!.push(event);
+  }
+  
+  // Calculate retention for each day using 7-day rolling window
+  for (let i = days - 1; i >= 0; i--) {
+    const endDate = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+    const date = endDate.toISOString().split('T')[0];
+    
+    // Collect events from past 7 days (rolling window)
+    let positiveCount = 0;
+    let totalCount = 0;
+    
+    for (let j = 0; j < 7; j++) {
+      const windowDate = new Date(endDate.getTime() - j * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+      const dayEvents = eventsByDate.get(windowDate) || [];
+      
+      for (const event of dayEvents) {
+        totalCount++;
+        if (event.rating === 'good' || event.rating === 'easy') {
+          positiveCount++;
+        }
+      }
+    }
+    
+    const rate = totalCount > 0 ? positiveCount / totalCount : 0;
+    result.push({ date, rate: Math.round(rate * 100) / 100 });
   }
   
   return result;

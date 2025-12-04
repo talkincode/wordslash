@@ -772,6 +772,399 @@ export class DashboardPanel {
       padding: 40px;
       color: var(--vscode-descriptionForeground);
     }
+    
+    /* ========== Animation Styles ========== */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(20px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+    
+    @keyframes slideInLeft {
+      from {
+        opacity: 0;
+        transform: translateX(-30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateX(0);
+      }
+    }
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+    
+    .stat-card {
+      background-color: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+      animation: fadeInUp 0.5s ease-out forwards;
+      opacity: 0;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    
+    .stat-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    
+    .stat-card:nth-child(1) { animation-delay: 0.1s; }
+    .stat-card:nth-child(2) { animation-delay: 0.15s; }
+    .stat-card:nth-child(3) { animation-delay: 0.2s; }
+    .stat-card:nth-child(4) { animation-delay: 0.25s; }
+    .stat-card:nth-child(5) { animation-delay: 0.3s; }
+    .stat-card:nth-child(6) { animation-delay: 0.35s; }
+    .stat-card:nth-child(7) { animation-delay: 0.4s; }
+    .stat-card:nth-child(8) { animation-delay: 0.45s; }
+    
+    .section {
+      background-color: var(--vscode-input-background);
+      border: 1px solid var(--vscode-input-border);
+      border-radius: 12px;
+      padding: 20px;
+      animation: fadeInUp 0.6s ease-out forwards;
+      opacity: 0;
+    }
+    
+    .sections .section:nth-child(1) { animation-delay: 0.5s; }
+    .sections .section:nth-child(2) { animation-delay: 0.6s; }
+    .sections .section:nth-child(3) { animation-delay: 0.7s; }
+    .sections .section:nth-child(4) { animation-delay: 0.8s; }
+    .sections .section:nth-child(5) { animation-delay: 0.9s; }
+    
+    /* ========== Heatmap Calendar Styles ========== */
+    .heatmap-container {
+      overflow-x: auto;
+      padding: 8px 0;
+    }
+    
+    .heatmap-grid {
+      display: grid;
+      grid-template-rows: repeat(7, 12px);
+      grid-auto-flow: column;
+      gap: 3px;
+      width: fit-content;
+    }
+    
+    .heatmap-cell {
+      width: 12px;
+      height: 12px;
+      border-radius: 2px;
+      transition: all 0.15s ease;
+      cursor: pointer;
+    }
+    
+    .heatmap-cell:hover {
+      transform: scale(1.3);
+      outline: 2px solid var(--vscode-focusBorder);
+    }
+    
+    .heatmap-cell.level-0 { background-color: var(--vscode-editor-background); border: 1px solid var(--vscode-input-border); }
+    .heatmap-cell.level-1 { background-color: rgba(0, 122, 204, 0.2); }
+    .heatmap-cell.level-2 { background-color: rgba(0, 122, 204, 0.4); }
+    .heatmap-cell.level-3 { background-color: rgba(0, 122, 204, 0.6); }
+    .heatmap-cell.level-4 { background-color: rgba(0, 122, 204, 0.8); }
+    .heatmap-cell.level-5 { background-color: rgba(0, 122, 204, 1); }
+    
+    .heatmap-legend {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      margin-top: 12px;
+      font-size: 0.8em;
+      color: var(--vscode-descriptionForeground);
+    }
+    
+    .heatmap-months {
+      display: flex;
+      margin-bottom: 4px;
+      font-size: 0.75em;
+      color: var(--vscode-descriptionForeground);
+    }
+    
+    .heatmap-month {
+      text-align: left;
+    }
+    
+    .heatmap-tooltip {
+      position: absolute;
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      padding: 6px 10px;
+      border-radius: 4px;
+      font-size: 0.85em;
+      pointer-events: none;
+      z-index: 100;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+      white-space: nowrap;
+    }
+    
+    /* ========== Donut Chart Styles ========== */
+    .donut-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 24px;
+    }
+    
+    .donut-chart {
+      position: relative;
+      width: 140px;
+      height: 140px;
+    }
+    
+    .donut-chart svg {
+      transform: rotate(-90deg);
+    }
+    
+    .donut-segment {
+      fill: none;
+      stroke-width: 20;
+      stroke-linecap: butt;
+      transition: stroke-dashoffset 1s ease-out, opacity 0.2s;
+    }
+    
+    .donut-segment:hover {
+      opacity: 0.8;
+    }
+    
+    .donut-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      text-align: center;
+    }
+    
+    .donut-center-value {
+      font-size: 1.8em;
+      font-weight: 700;
+      color: var(--vscode-textLink-foreground);
+    }
+    
+    .donut-center-label {
+      font-size: 0.75em;
+      color: var(--vscode-descriptionForeground);
+    }
+    
+    .donut-legend {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    
+    .donut-legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.9em;
+      cursor: pointer;
+      transition: opacity 0.2s;
+    }
+    
+    .donut-legend-item:hover {
+      opacity: 0.7;
+    }
+    
+    .donut-legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+    }
+    
+    .donut-legend-dot.new { background: #64b5f6; }
+    .donut-legend-dot.learning { background: #ffb74d; }
+    .donut-legend-dot.mastered { background: #81c784; }
+    
+    /* ========== Sparkline Styles ========== */
+    .sparkline-container {
+      position: relative;
+      height: 60px;
+      margin-top: 12px;
+    }
+    
+    .sparkline-svg {
+      width: 100%;
+      height: 100%;
+    }
+    
+    .sparkline-path {
+      fill: none;
+      stroke: var(--vscode-textLink-foreground);
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+    
+    .sparkline-area {
+      fill: url(#sparklineGradient);
+      opacity: 0.3;
+    }
+    
+    .sparkline-dot {
+      fill: var(--vscode-textLink-foreground);
+      transition: r 0.2s ease;
+    }
+    
+    .sparkline-dot:hover {
+      r: 5;
+    }
+    
+    /* ========== Enhanced Bar Chart Styles ========== */
+    .bar-chart-enhanced {
+      display: flex;
+      align-items: flex-end;
+      justify-content: flex-start;
+      height: 100%;
+      gap: 1px;
+      position: relative;
+    }
+    
+    .bar-enhanced {
+      flex: 0 0 auto;
+      width: 8px;
+      background: linear-gradient(180deg, var(--vscode-textLink-foreground) 0%, rgba(0,122,204,0.6) 100%);
+      border-radius: 2px 2px 0 0;
+      min-height: 2px;
+      transition: all 0.3s ease;
+      position: relative;
+      cursor: pointer;
+    }
+    
+    .bar-enhanced:hover {
+      background: linear-gradient(180deg, #4fc3f7 0%, var(--vscode-textLink-foreground) 100%);
+      transform: scaleY(1.05);
+    }
+    
+    .bar-enhanced::after {
+      content: attr(data-tooltip);
+      position: absolute;
+      bottom: calc(100% + 8px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--vscode-editorWidget-background);
+      border: 1px solid var(--vscode-editorWidget-border);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.75em;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+      z-index: 10;
+    }
+    
+    .bar-enhanced:hover::after {
+      opacity: 1;
+    }
+    
+    .chart-avg-line {
+      position: absolute;
+      left: 0;
+      right: 0;
+      border-top: 2px dashed rgba(255, 183, 77, 0.6);
+      z-index: 5;
+    }
+    
+    .chart-avg-label {
+      position: absolute;
+      right: 4px;
+      font-size: 0.7em;
+      color: #ffb74d;
+      transform: translateY(-100%);
+    }
+    
+    /* ========== Rating Pills Enhanced ========== */
+    .rating-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 12px;
+      border-radius: 20px;
+      background: var(--vscode-editor-background);
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+    
+    .rating-pill:hover {
+      transform: scale(1.05);
+    }
+    
+    .rating-pill-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+    
+    .rating-pill-dot.again { background: #d32f2f; }
+    .rating-pill-dot.hard { background: #f57c00; }
+    .rating-pill-dot.good { background: #388e3c; }
+    .rating-pill-dot.easy { background: #1976d2; }
+    
+    .rating-pill-label {
+      font-size: 0.85em;
+      color: var(--vscode-descriptionForeground);
+    }
+    
+    .rating-pill-value {
+      font-weight: 600;
+      font-size: 1.1em;
+    }
+    
+    /* ========== Progress Ring ========== */
+    .progress-ring-container {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 16px;
+    }
+    
+    .progress-ring {
+      width: 80px;
+      height: 80px;
+    }
+    
+    .progress-ring-circle-bg {
+      fill: none;
+      stroke: var(--vscode-editor-background);
+      stroke-width: 8;
+    }
+    
+    .progress-ring-circle {
+      fill: none;
+      stroke: var(--vscode-textLink-foreground);
+      stroke-width: 8;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 1s ease-out;
+      transform: rotate(-90deg);
+      transform-origin: center;
+    }
+    
+    .progress-ring-text {
+      font-size: 1.2em;
+      font-weight: 600;
+      fill: var(--vscode-textLink-foreground);
+    }
   </style>
 </head>
 <body>
@@ -793,10 +1186,29 @@ export class DashboardPanel {
     <div class="stats-grid" id="stats-grid"></div>
     
     <div class="sections">
+      <!-- Heatmap Calendar -->
+      <div class="section" style="grid-column: 1 / -1;">
+        <div class="section-title">🔥 Activity Heatmap (90 Days)</div>
+        <div class="heatmap-months" id="heatmap-months"></div>
+        <div class="heatmap-container">
+          <div class="heatmap-grid" id="heatmap-grid"></div>
+        </div>
+        <div class="heatmap-legend">
+          <span>Less</span>
+          <div class="heatmap-cell level-0" style="cursor:default"></div>
+          <div class="heatmap-cell level-1" style="cursor:default"></div>
+          <div class="heatmap-cell level-2" style="cursor:default"></div>
+          <div class="heatmap-cell level-3" style="cursor:default"></div>
+          <div class="heatmap-cell level-4" style="cursor:default"></div>
+          <div class="heatmap-cell level-5" style="cursor:default"></div>
+          <span>More</span>
+        </div>
+      </div>
+      
       <div class="section">
         <div class="section-title">📊 Review History (30 Days)</div>
         <div class="chart-container">
-          <div class="bar-chart" id="reviews-chart"></div>
+          <div class="bar-chart-enhanced" id="reviews-chart"></div>
         </div>
       </div>
       
@@ -806,13 +1218,14 @@ export class DashboardPanel {
       </div>
       
       <div class="section">
-        <div class="section-title">📝 Card Types</div>
-        <div class="type-chart" id="types-chart"></div>
+        <div class="section-title">📝 Card Distribution</div>
+        <div class="donut-container" id="donut-chart"></div>
       </div>
       
       <div class="section">
         <div class="section-title">📈 Learning Progress</div>
         <div id="progress-info"></div>
+        <div class="sparkline-container" id="retention-sparkline"></div>
       </div>
       
       <div class="section graph-section">
@@ -957,54 +1370,168 @@ export class DashboardPanel {
       document.getElementById('loading').style.display = 'none';
       document.getElementById('content').style.display = 'block';
       
-      // Render stat cards
+      // Render stat cards with animated counters
       const statsGrid = document.getElementById('stats-grid');
       statsGrid.innerHTML = \`
         <div class="stat-card highlight">
-          <div class="stat-value">\${stats.dueCards}</div>
+          <div class="stat-value" data-count="\${stats.dueCards}">0</div>
           <div class="stat-label">Due Today</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${stats.totalCards}</div>
+          <div class="stat-value" data-count="\${stats.totalCards}">0</div>
           <div class="stat-label">Total Cards</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${stats.newCards}</div>
+          <div class="stat-value" data-count="\${stats.newCards}">0</div>
           <div class="stat-label">New Cards</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${stats.learnedCards}</div>
+          <div class="stat-value" data-count="\${stats.learnedCards}">0</div>
           <div class="stat-label">Learned</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${stats.masteredCards}</div>
+          <div class="stat-value" data-count="\${stats.masteredCards}">0</div>
           <div class="stat-label">Mastered</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${stats.currentStreak}</div>
+          <div class="stat-value" data-count="\${stats.currentStreak}">0</div>
           <div class="stat-label">Day Streak 🔥</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${Math.round(stats.retentionRate * 100)}%</div>
+          <div class="stat-value" data-count="\${Math.round(stats.retentionRate * 100)}" data-suffix="%">0%</div>
           <div class="stat-label">Retention</div>
         </div>
         <div class="stat-card">
-          <div class="stat-value">\${stats.reviewsToday}</div>
+          <div class="stat-value" data-count="\${stats.reviewsToday}">0</div>
           <div class="stat-label">Reviews Today</div>
         </div>
       \`;
       
-      // Render reviews chart
-      renderReviewsChart(stats.reviewsPerDay);
+      // Animate counters after a short delay
+      setTimeout(() => animateCounters(), 200);
+      
+      // Render heatmap calendar
+      renderHeatmapCalendar(stats.reviewsPerDay);
+      
+      // Render enhanced reviews chart (last 30 days)
+      renderReviewsChartEnhanced(stats.reviewsPerDay.slice(-30));
       
       // Render ratings distribution
       renderRatingsChart(stats.ratingsDistribution);
       
-      // Render card types
-      renderTypesChart(stats.cardsByType, stats.totalCards);
+      // Render donut chart for card distribution
+      renderDonutChart(stats);
       
-      // Render progress info
+      // Render progress info with sparkline
       renderProgressInfo(stats);
+    }
+    
+    // Animate number counters
+    function animateCounters() {
+      const counters = document.querySelectorAll('.stat-value[data-count]');
+      counters.forEach(counter => {
+        const target = parseInt(counter.getAttribute('data-count'));
+        const suffix = counter.getAttribute('data-suffix') || '';
+        const duration = 1000;
+        const startTime = performance.now();
+        
+        function updateCounter(currentTime) {
+          const elapsed = currentTime - startTime;
+          const progress = Math.min(elapsed / duration, 1);
+          
+          // Easing function for smooth animation
+          const easeOutQuart = 1 - Math.pow(1 - progress, 4);
+          const current = Math.round(target * easeOutQuart);
+          
+          counter.textContent = current + suffix;
+          
+          if (progress < 1) {
+            requestAnimationFrame(updateCounter);
+          }
+        }
+        
+        requestAnimationFrame(updateCounter);
+      });
+    }
+    
+    // Render heatmap calendar (90 days)
+    function renderHeatmapCalendar(reviewsPerDay) {
+      const container = document.getElementById('heatmap-grid');
+      const monthsContainer = document.getElementById('heatmap-months');
+      
+      // Calculate max for color scaling
+      const maxCount = Math.max(...reviewsPerDay.map(d => d.count), 1);
+      
+      // Build heatmap cells
+      let html = '';
+      const months = new Map();
+      
+      reviewsPerDay.forEach((day, index) => {
+        const date = new Date(day.date);
+        const dayOfWeek = date.getDay();
+        const monthKey = date.toLocaleDateString('en-US', { month: 'short' });
+        
+        // Track months for labels
+        if (!months.has(monthKey)) {
+          months.set(monthKey, index);
+        }
+        
+        // Calculate color level (0-5)
+        let level = 0;
+        if (day.count > 0) {
+          const ratio = day.count / maxCount;
+          if (ratio <= 0.2) level = 1;
+          else if (ratio <= 0.4) level = 2;
+          else if (ratio <= 0.6) level = 3;
+          else if (ratio <= 0.8) level = 4;
+          else level = 5;
+        }
+        
+        const tooltip = \`\${day.date}: \${day.count} review\${day.count !== 1 ? 's' : ''}\`;
+        html += \`<div class="heatmap-cell level-\${level}" data-date="\${day.date}" data-count="\${day.count}" title="\${tooltip}"></div>\`;
+      });
+      
+      container.innerHTML = html;
+      
+      // Render month labels
+      const weeksTotal = Math.ceil(reviewsPerDay.length / 7);
+      const cellWidth = 15; // 12px cell + 3px gap
+      let monthsHtml = '';
+      let lastMonth = '';
+      
+      for (let week = 0; week < weeksTotal; week++) {
+        const dayIndex = week * 7;
+        if (dayIndex < reviewsPerDay.length) {
+          const date = new Date(reviewsPerDay[dayIndex].date);
+          const month = date.toLocaleDateString('en-US', { month: 'short' });
+          if (month !== lastMonth) {
+            monthsHtml += \`<span class="heatmap-month" style="width: \${cellWidth * 4}px;">\${month}</span>\`;
+            lastMonth = month;
+          }
+        }
+      }
+      
+      monthsContainer.innerHTML = monthsHtml;
+    }
+    
+    // Enhanced reviews chart with tooltips and average line
+    function renderReviewsChartEnhanced(reviewsPerDay) {
+      const container = document.getElementById('reviews-chart');
+      const maxCount = Math.max(...reviewsPerDay.map(d => d.count), 1);
+      const avgCount = reviewsPerDay.reduce((sum, d) => sum + d.count, 0) / reviewsPerDay.length;
+      const avgHeight = (avgCount / maxCount) * 100;
+      
+      let barsHtml = reviewsPerDay.map((day, index) => {
+        const height = (day.count / maxCount) * 100;
+        const shortDate = new Date(day.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        const tooltip = \`\${shortDate}: \${day.count}\`;
+        return \`<div class="bar-enhanced" style="height: \${Math.max(height, 2)}%; animation-delay: \${index * 15}ms;" data-tooltip="\${tooltip}"></div>\`;
+      }).join('');
+      
+      // Add average line
+      barsHtml += \`<div class="chart-avg-line" style="bottom: \${avgHeight}%;"><span class="chart-avg-label">avg \${Math.round(avgCount)}</span></div>\`;
+      
+      container.innerHTML = barsHtml;
     }
     
     function renderReviewsChart(reviewsPerDay) {
@@ -1019,29 +1546,147 @@ export class DashboardPanel {
     
     function renderRatingsChart(ratings) {
       const container = document.getElementById('ratings-chart');
-      const total = ratings.again + ratings.hard + ratings.good + ratings.easy;
-      const maxCount = Math.max(ratings.again, ratings.hard, ratings.good, ratings.easy, 1);
+      const total = ratings.again + ratings.hard + ratings.good + ratings.easy || 1;
+      
+      // SVG donut chart calculations
+      const radius = 50;
+      const circumference = 2 * Math.PI * radius;
       
       const items = [
-        { key: 'again', label: 'Again', color: 'again' },
-        { key: 'hard', label: 'Hard', color: 'hard' },
-        { key: 'good', label: 'Good', color: 'good' },
-        { key: 'easy', label: 'Easy', color: 'easy' },
+        { key: 'again', label: 'Again', color: '#d32f2f', count: ratings.again },
+        { key: 'hard', label: 'Hard', color: '#f57c00', count: ratings.hard },
+        { key: 'good', label: 'Good', color: '#388e3c', count: ratings.good },
+        { key: 'easy', label: 'Easy', color: '#1976d2', count: ratings.easy },
       ];
       
-      container.innerHTML = items.map(item => {
-        const count = ratings[item.key];
-        const height = (count / maxCount) * 100;
-        return \`
-          <div class="rating-item">
-            <div class="rating-bar">
-              <div class="rating-fill \${item.color}" style="height: \${Math.max(height, 4)}%"></div>
+      // Calculate segments
+      let offset = 0;
+      const segments = items.map((item, index) => {
+        const percent = item.count / total;
+        const dash = circumference * percent;
+        const currentOffset = circumference - offset;
+        offset += dash;
+        return {
+          ...item,
+          percent,
+          dash,
+          offset: currentOffset,
+          delay: 0.6 + index * 0.1
+        };
+      });
+      
+      // Retention rate (good + easy)
+      const retentionPercent = Math.round(((ratings.good + ratings.easy) / total) * 100);
+      
+      container.innerHTML = \`
+        <div class="donut-container">
+          <div class="donut-chart">
+            <svg width="140" height="140" viewBox="0 0 140 140">
+              <!-- Background circle -->
+              <circle cx="70" cy="70" r="\${radius}" fill="none" stroke="var(--vscode-editor-background)" stroke-width="20"/>
+              
+              \${segments.map(seg => \`
+                <circle class="donut-segment" cx="70" cy="70" r="\${radius}" 
+                        stroke="\${seg.color}" 
+                        stroke-dasharray="\${seg.dash} \${circumference - seg.dash}"
+                        stroke-dashoffset="\${seg.offset}"
+                        style="animation: scaleIn 0.8s ease-out \${seg.delay}s forwards; opacity: 0;"/>
+              \`).join('')}
+            </svg>
+            <div class="donut-center">
+              <div class="donut-center-value">\${retentionPercent}%</div>
+              <div class="donut-center-label">Retention</div>
             </div>
-            <div class="rating-label">\${item.label}</div>
-            <div class="rating-value">\${count}</div>
           </div>
-        \`;
-      }).join('');
+          <div class="donut-legend">
+            \${items.map(item => {
+              const percent = Math.round((item.count / total) * 100);
+              return \`
+                <div class="donut-legend-item">
+                  <div class="donut-legend-dot" style="background: \${item.color};"></div>
+                  <span>\${item.label}: \${item.count} (\${percent}%)</span>
+                </div>
+              \`;
+            }).join('')}
+          </div>
+        </div>
+      \`;
+    }
+    
+    // Render donut chart for card distribution
+    function renderDonutChart(stats) {
+      const container = document.getElementById('donut-chart');
+      const total = stats.totalCards || 1;
+      const newCards = stats.newCards;
+      const learning = stats.learnedCards - stats.masteredCards;
+      const mastered = stats.masteredCards;
+      
+      // SVG calculations
+      const radius = 50;
+      const circumference = 2 * Math.PI * radius;
+      
+      const newPercent = newCards / total;
+      const learningPercent = learning / total;
+      const masteredPercent = mastered / total;
+      
+      const newDash = circumference * newPercent;
+      const learningDash = circumference * learningPercent;
+      const masteredDash = circumference * masteredPercent;
+      
+      let offset = 0;
+      const newOffset = circumference - offset;
+      offset += newDash;
+      const learningOffset = circumference - offset;
+      offset += learningDash;
+      const masteredOffset = circumference - offset;
+      
+      container.innerHTML = \`
+        <div class="donut-chart">
+          <svg width="140" height="140" viewBox="0 0 140 140">
+            <!-- Background circle -->
+            <circle cx="70" cy="70" r="\${radius}" fill="none" stroke="var(--vscode-editor-background)" stroke-width="20"/>
+            
+            <!-- New cards segment -->
+            <circle class="donut-segment" cx="70" cy="70" r="\${radius}" 
+                    stroke="#64b5f6" 
+                    stroke-dasharray="\${newDash} \${circumference - newDash}"
+                    stroke-dashoffset="\${newOffset}"
+                    style="animation: scaleIn 0.8s ease-out 0.7s forwards; opacity: 0;"/>
+            
+            <!-- Learning segment -->
+            <circle class="donut-segment" cx="70" cy="70" r="\${radius}" 
+                    stroke="#ffb74d" 
+                    stroke-dasharray="\${learningDash} \${circumference - learningDash}"
+                    stroke-dashoffset="\${learningOffset}"
+                    style="animation: scaleIn 0.8s ease-out 0.8s forwards; opacity: 0;"/>
+            
+            <!-- Mastered segment -->
+            <circle class="donut-segment" cx="70" cy="70" r="\${radius}" 
+                    stroke="#81c784" 
+                    stroke-dasharray="\${masteredDash} \${circumference - masteredDash}"
+                    stroke-dashoffset="\${masteredOffset}"
+                    style="animation: scaleIn 0.8s ease-out 0.9s forwards; opacity: 0;"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-center-value">\${total}</div>
+            <div class="donut-center-label">Total</div>
+          </div>
+        </div>
+        <div class="donut-legend">
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot new"></div>
+            <span>New: \${newCards}</span>
+          </div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot learning"></div>
+            <span>Learning: \${learning}</span>
+          </div>
+          <div class="donut-legend-item">
+            <div class="donut-legend-dot mastered"></div>
+            <span>Mastered: \${mastered}</span>
+          </div>
+        </div>
+      \`;
     }
     
     function renderTypesChart(cardsByType, total) {
@@ -1069,25 +1714,97 @@ export class DashboardPanel {
     
     function renderProgressInfo(stats) {
       const container = document.getElementById('progress-info');
+      const sparklineContainer = document.getElementById('retention-sparkline');
       
       const masteryPercent = stats.totalCards > 0 
         ? Math.round((stats.masteredCards / stats.totalCards) * 100) 
         : 0;
       
+      // Progress ring circumference
+      const radius = 32;
+      const circumference = 2 * Math.PI * radius;
+      const strokeDashoffset = circumference - (masteryPercent / 100) * circumference;
+      
       container.innerHTML = \`
-        <div style="margin-bottom: 16px;">
-          <div style="display: flex; justify-content: space-between; margin-bottom: 4px;">
-            <span>Overall Mastery</span>
-            <span>\${masteryPercent}%</span>
-          </div>
-          <div class="type-bar-container">
-            <div class="type-bar-fill" style="width: \${masteryPercent}%"></div>
+        <div class="progress-ring-container">
+          <svg class="progress-ring" viewBox="0 0 80 80">
+            <circle class="progress-ring-circle-bg" cx="40" cy="40" r="\${radius}"/>
+            <circle class="progress-ring-circle" cx="40" cy="40" r="\${radius}"
+                    stroke-dasharray="\${circumference}"
+                    stroke-dashoffset="\${circumference}"
+                    style="animation: none;">
+              <animate attributeName="stroke-dashoffset" 
+                       from="\${circumference}" 
+                       to="\${strokeDashoffset}" 
+                       dur="1.5s" 
+                       fill="freeze"
+                       begin="0.8s"/>
+            </circle>
+            <text class="progress-ring-text" x="40" y="44" text-anchor="middle">\${masteryPercent}%</text>
+          </svg>
+          <div>
+            <div style="font-weight: 600; margin-bottom: 4px;">Overall Mastery</div>
+            <div style="font-size: 0.85em; color: var(--vscode-descriptionForeground);">
+              \${stats.masteredCards} of \${stats.totalCards} cards mastered
+            </div>
           </div>
         </div>
-        <div style="font-size: 0.9em; color: var(--vscode-descriptionForeground);">
+        <div style="font-size: 0.9em; color: var(--vscode-descriptionForeground); display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
           <p>📊 Total reviews: \${stats.totalReviews}</p>
           <p>📈 Average ease: \${stats.averageEaseFactor.toFixed(2)}</p>
-          <p>🎯 Retention rate: \${Math.round(stats.retentionRate * 100)}%</p>
+        </div>
+        <div style="margin-top: 12px; font-size: 0.9em;">
+          <span style="color: var(--vscode-descriptionForeground);">📉 Retention Trend (30 days)</span>
+        </div>
+      \`;
+      
+      // Render sparkline
+      renderRetentionSparkline(stats.retentionHistory || [], sparklineContainer);
+    }
+    
+    // Render retention rate sparkline
+    function renderRetentionSparkline(history, container) {
+      if (!history || history.length === 0) {
+        container.innerHTML = '<div style="text-align: center; color: var(--vscode-descriptionForeground); padding: 16px;">No data yet</div>';
+        return;
+      }
+      
+      const width = container.clientWidth || 300;
+      const height = 60;
+      const padding = 4;
+      
+      const points = history.map((d, i) => ({
+        x: padding + (i / (history.length - 1)) * (width - padding * 2),
+        y: height - padding - (d.rate * (height - padding * 2))
+      }));
+      
+      // Create SVG path
+      const pathD = points.map((p, i) => 
+        (i === 0 ? 'M' : 'L') + p.x.toFixed(1) + ',' + p.y.toFixed(1)
+      ).join(' ');
+      
+      // Create area path (closed shape)
+      const areaD = pathD + \` L\${points[points.length - 1].x.toFixed(1)},\${height - padding} L\${points[0].x.toFixed(1)},\${height - padding} Z\`;
+      
+      // Current and average values
+      const currentRate = history[history.length - 1]?.rate || 0;
+      const avgRate = history.reduce((sum, d) => sum + d.rate, 0) / history.length;
+      
+      container.innerHTML = \`
+        <svg class="sparkline-svg" viewBox="0 0 \${width} \${height}" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="sparklineGradient" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="var(--vscode-textLink-foreground)" stop-opacity="0.4"/>
+              <stop offset="100%" stop-color="var(--vscode-textLink-foreground)" stop-opacity="0"/>
+            </linearGradient>
+          </defs>
+          <path class="sparkline-area" d="\${areaD}"/>
+          <path class="sparkline-path" d="\${pathD}"/>
+          \${points.map((p, i) => \`<circle class="sparkline-dot" cx="\${p.x.toFixed(1)}" cy="\${p.y.toFixed(1)}" r="2"><title>\${history[i].date}: \${Math.round(history[i].rate * 100)}%</title></circle>\`).join('')}
+        </svg>
+        <div style="display: flex; justify-content: space-between; font-size: 0.8em; color: var(--vscode-descriptionForeground); margin-top: 4px;">
+          <span>Current: <strong style="color: var(--vscode-textLink-foreground);">\${Math.round(currentRate * 100)}%</strong></span>
+          <span>Avg: <strong>\${Math.round(avgRate * 100)}%</strong></span>
         </div>
       \`;
     }
