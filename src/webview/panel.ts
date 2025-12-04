@@ -852,6 +852,126 @@ export class FlashcardPanel {
       autoPlay: true
     };
     
+    // ========== IndexedDB Audio Cache ==========
+    const DB_NAME = 'wordslash-tts-cache';
+    const DB_VERSION = 1;
+    const STORE_NAME = 'audio';
+    const CACHE_EXPIRY_DAYS = 30;
+    let dbInstance = null;
+    
+    async function openDB() {
+      if (dbInstance) return dbInstance;
+      
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        
+        request.onerror = () => reject(request.error);
+        
+        request.onsuccess = () => {
+          dbInstance = request.result;
+          resolve(dbInstance);
+        };
+        
+        request.onupgradeneeded = (event) => {
+          const db = event.target.result;
+          if (!db.objectStoreNames.contains(STORE_NAME)) {
+            const store = db.createObjectStore(STORE_NAME, { keyPath: 'key' });
+            store.createIndex('timestamp', 'timestamp');
+          }
+        };
+      });
+    }
+    
+    function getCacheKey(text, engine, voice) {
+      // Create a unique key based on text, engine, and voice
+      return \`\${engine}:\${voice || 'default'}:\${text}\`;
+    }
+    
+    async function getFromCache(key) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readonly');
+          const store = tx.objectStore(STORE_NAME);
+          const request = store.get(key);
+          
+          request.onsuccess = () => {
+            const result = request.result;
+            if (result) {
+              // Check if cache is expired
+              const age = Date.now() - result.timestamp;
+              const maxAge = CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000;
+              if (age < maxAge) {
+                console.log('[WordSlash] Cache hit for:', key.substring(0, 50));
+                resolve(result.audioBlob);
+              } else {
+                console.log('[WordSlash] Cache expired for:', key.substring(0, 50));
+                resolve(null);
+              }
+            } else {
+              resolve(null);
+            }
+          };
+          
+          request.onerror = () => reject(request.error);
+        });
+      } catch (error) {
+        console.error('[WordSlash] Cache read error:', error);
+        return null;
+      }
+    }
+    
+    async function saveToCache(key, audioBlob) {
+      try {
+        const db = await openDB();
+        return new Promise((resolve, reject) => {
+          const tx = db.transaction(STORE_NAME, 'readwrite');
+          const store = tx.objectStore(STORE_NAME);
+          
+          store.put({
+            key: key,
+            audioBlob: audioBlob,
+            timestamp: Date.now()
+          });
+          
+          tx.oncomplete = () => {
+            console.log('[WordSlash] Cached audio for:', key.substring(0, 50));
+            resolve();
+          };
+          tx.onerror = () => reject(tx.error);
+        });
+      } catch (error) {
+        console.error('[WordSlash] Cache write error:', error);
+      }
+    }
+    
+    async function cleanExpiredCache() {
+      try {
+        const db = await openDB();
+        const tx = db.transaction(STORE_NAME, 'readwrite');
+        const store = tx.objectStore(STORE_NAME);
+        const index = store.index('timestamp');
+        const expireTime = Date.now() - (CACHE_EXPIRY_DAYS * 24 * 60 * 60 * 1000);
+        
+        const range = IDBKeyRange.upperBound(expireTime);
+        const request = index.openCursor(range);
+        
+        request.onsuccess = (event) => {
+          const cursor = event.target.result;
+          if (cursor) {
+            store.delete(cursor.primaryKey);
+            cursor.continue();
+          }
+        };
+      } catch (error) {
+        console.error('[WordSlash] Cache cleanup error:', error);
+      }
+    }
+    
+    // Clean expired cache on startup
+    cleanExpiredCache();
+    // ========== End IndexedDB Cache ==========
+    
     // Send ready message
     vscode.postMessage({ type: 'ui_ready' });
     
@@ -1114,10 +1234,11 @@ export class FlashcardPanel {
         return;
       }
       
-      // Azure TTS implementation
+      // Azure TTS implementation with caching
       if (engine === 'azure') {
         const azureKey = ttsSettings.azureKey;
         const azureRegion = ttsSettings.azureRegion || 'eastus';
+        const voiceName = 'en-US-JennyNeural';
         
         if (!azureKey) {
           console.log('[WordSlash] Azure key not configured, falling back to browser TTS');
@@ -1125,37 +1246,52 @@ export class FlashcardPanel {
           return;
         }
         
+        // Azure SSML rate: -50% to +100%, where 0% is normal speed
+        // Convert our rate (0.5-2.0) to Azure format: rate 0.85 -> "-15%", rate 1.0 -> "0%"
+        const rateValue = ttsSettings.rate || 0.85;
+        const azureRate = Math.round((rateValue - 1.0) * 100);
+        const rateStr = azureRate >= 0 ? \`+\${azureRate}%\` : \`\${azureRate}%\`;
+        
+        // Create cache key (includes rate since different rates produce different audio)
+        const cacheKey = getCacheKey(text, \`azure-\${azureRegion}-\${rateStr}\`, voiceName);
+        
         let audioUrl = null;
         try {
-          // Azure SSML rate: -50% to +100%, where 0% is normal speed
-          // Convert our rate (0.5-2.0) to Azure format: rate 0.85 -> "-15%", rate 1.0 -> "0%"
-          const rateValue = ttsSettings.rate || 0.85;
-          const azureRate = Math.round((rateValue - 1.0) * 100);
-          const rateStr = azureRate >= 0 ? \`+\${azureRate}%\` : \`\${azureRate}%\`;
+          // Try to get from cache first
+          let audioBlob = await getFromCache(cacheKey);
           
-          const ssml = \`<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
-            <voice name="en-US-JennyNeural">
-              <prosody rate="\${rateStr}">
-                \${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
-              </prosody>
-            </voice>
-          </speak>\`;
-          
-          const response = await fetch(\`https://\${azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1\`, {
-            method: 'POST',
-            headers: {
-              'Ocp-Apim-Subscription-Key': azureKey,
-              'Content-Type': 'application/ssml+xml',
-              'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3'
-            },
-            body: ssml
-          });
-          
-          if (!response.ok) {
-            throw new Error(\`Azure TTS failed: \${response.status} \${response.statusText}\`);
+          if (!audioBlob) {
+            // Not in cache, fetch from Azure
+            console.log('[WordSlash] Fetching from Azure TTS...');
+            
+            const ssml = \`<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+              <voice name="\${voiceName}">
+                <prosody rate="\${rateStr}">
+                  \${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+                </prosody>
+              </voice>
+            </speak>\`;
+            
+            const response = await fetch(\`https://\${azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1\`, {
+              method: 'POST',
+              headers: {
+                'Ocp-Apim-Subscription-Key': azureKey,
+                'Content-Type': 'application/ssml+xml',
+                'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3'
+              },
+              body: ssml
+            });
+            
+            if (!response.ok) {
+              throw new Error(\`Azure TTS failed: \${response.status} \${response.statusText}\`);
+            }
+            
+            audioBlob = await response.blob();
+            
+            // Save to cache (don't await, let it happen in background)
+            saveToCache(cacheKey, audioBlob);
           }
           
-          const audioBlob = await response.blob();
           audioUrl = URL.createObjectURL(audioBlob);
           
           if (!audioPlayer) {
