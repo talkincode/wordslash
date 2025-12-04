@@ -3,7 +3,7 @@
   "displayName": "WordSlash",
   "description": "English vocabulary learning with spaced repetition in VS Code",
   "version": "0.1.0",
-  "publisher": "wordslash",
+  "publisher": "TeraTeams",
   "icon": "media/icon.png",
   "repository": {
     "type": "git",
