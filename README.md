@@ -20,7 +20,13 @@
   <a href="#-commands">Commands</a>
 </p>
 
+<p align="center">
+  English | <a href="README.zh-CN.md">中文</a>
+</p>
+
 ---
+
+![](media/wordslash.jpg)
 
 ## ✨ Features
 
