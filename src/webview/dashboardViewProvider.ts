@@ -60,6 +60,12 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
         case 'importBackup':
           vscode.commands.executeCommand('wordslash.importBackup');
           break;
+        case 'importCards':
+          vscode.commands.executeCommand('wordslash.importBulk');
+          break;
+        case 'exportTemplate':
+          vscode.commands.executeCommand('wordslash.exportTemplate');
+          break;
       }
     });
 
@@ -405,6 +411,9 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       <button class="btn btn-secondary" onclick="openDashboard()">
         <span class="btn-icon">📊</span> Full Dashboard
       </button>
+      <button class="btn btn-secondary" onclick="importCards()">
+        <span class="btn-icon">📋</span> Import Cards
+      </button>
     </div>
     
     <div class="quick-links">
@@ -415,6 +424,7 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     <div class="backup-links">
       <a class="quick-link" onclick="exportBackup()">📤 Export Backup</a>
       <a class="quick-link" onclick="importBackup()">📥 Import Backup</a>
+      <a class="quick-link" onclick="exportTemplate()">📄 Export Template</a>
     </div>
   </div>
 
@@ -518,6 +528,14 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
     
     function importBackup() {
       vscode.postMessage({ type: 'importBackup' });
+    }
+    
+    function importCards() {
+      vscode.postMessage({ type: 'importCards' });
+    }
+    
+    function exportTemplate() {
+      vscode.postMessage({ type: 'exportTemplate' });
     }
   </script>
 </body>
