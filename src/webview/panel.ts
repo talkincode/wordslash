@@ -299,7 +299,7 @@ export class FlashcardPanel {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; media-src https://dict.youdao.com https://translate.google.com;">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; media-src blob: https://dict.youdao.com https://translate.google.com; connect-src https://*.tts.speech.microsoft.com;">
   <title>WordSlash Flashcards</title>
   <style>
     :root {
@@ -868,9 +868,80 @@ export class FlashcardPanel {
         return;
       }
       
-      // For premium engines (azure, openai) - TODO: implement
-      if (engine === 'azure' || engine === 'openai') {
-        console.log('[WordSlash] Premium TTS not yet implemented, using browser TTS');
+      // Azure TTS implementation
+      if (engine === 'azure') {
+        const azureKey = ttsSettings.azureKey;
+        const azureRegion = ttsSettings.azureRegion || 'eastus';
+        
+        if (!azureKey) {
+          console.log('[WordSlash] Azure key not configured, falling back to browser TTS');
+          speakWithTTS(text);
+          return;
+        }
+        
+        let audioUrl = null;
+        try {
+          // Azure SSML rate: -50% to +100%, where 0% is normal speed
+          // Convert our rate (0.5-2.0) to Azure format: rate 0.85 -> "-15%", rate 1.0 -> "0%"
+          const rateValue = ttsSettings.rate || 0.85;
+          const azureRate = Math.round((rateValue - 1.0) * 100);
+          const rateStr = azureRate >= 0 ? \`+\${azureRate}%\` : \`\${azureRate}%\`;
+          
+          const ssml = \`<speak version="1.0" xmlns="http://www.w3.org/2001/10/synthesis" xml:lang="en-US">
+            <voice name="en-US-JennyNeural">
+              <prosody rate="\${rateStr}">
+                \${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}
+              </prosody>
+            </voice>
+          </speak>\`;
+          
+          const response = await fetch(\`https://\${azureRegion}.tts.speech.microsoft.com/cognitiveservices/v1\`, {
+            method: 'POST',
+            headers: {
+              'Ocp-Apim-Subscription-Key': azureKey,
+              'Content-Type': 'application/ssml+xml',
+              'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3'
+            },
+            body: ssml
+          });
+          
+          if (!response.ok) {
+            throw new Error(\`Azure TTS failed: \${response.status} \${response.statusText}\`);
+          }
+          
+          const audioBlob = await response.blob();
+          audioUrl = URL.createObjectURL(audioBlob);
+          
+          if (!audioPlayer) {
+            audioPlayer = new Audio();
+          }
+          
+          audioPlayer.src = audioUrl;
+          audioPlayer.playbackRate = 1.0; // Rate already applied via SSML prosody
+          
+          audioPlayer.onended = () => {
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
+          };
+          
+          await audioPlayer.play();
+          console.log('[WordSlash] Playing Azure TTS for:', text);
+          return;
+        } catch (error) {
+          // NotAllowedError means autoplay was blocked - this is expected, don't fallback
+          if (error.name === 'NotAllowedError') {
+            console.log('[WordSlash] Azure TTS autoplay blocked (user gesture required)');
+            if (audioUrl) URL.revokeObjectURL(audioUrl);
+            return;
+          }
+          console.error('[WordSlash] Azure TTS error:', error);
+          speakWithTTS(text);
+          return;
+        }
+      }
+      
+      // OpenAI TTS - TODO: implement when needed
+      if (engine === 'openai') {
+        console.log('[WordSlash] OpenAI TTS not yet implemented, using browser TTS');
         speakWithTTS(text);
         return;
       }
