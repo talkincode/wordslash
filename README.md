@@ -26,8 +26,6 @@
 
 ---
 
-![](media/wordslash.jpg)
-
 ## ✨ Features
 
 - 🎯 **Seamless Integration** - Add any word/phrase to flashcards with a single click while coding
