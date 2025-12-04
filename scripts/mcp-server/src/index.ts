@@ -10,7 +10,7 @@ import {
   type Tool,
 } from '@modelcontextprotocol/sdk/types.js';
 import { Storage } from './storage.js';
-import type { CreateCardInput, UpdateCardInput, KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge, DashboardStats } from './types.js';
+import type { Card, CreateCardInput, UpdateCardInput, KnowledgeGraph, KnowledgeGraphNode, KnowledgeGraphEdge, DashboardStats } from './types.js';
 
 // Initialize storage
 const storage = new Storage(process.env.WORDSLASH_STORAGE_PATH);
@@ -27,13 +27,58 @@ const tools: Tool[] = [
           type: 'string',
           description: 'Optional search term to filter cards by term or translation',
         },
+        fullTextSearch: {
+          type: 'string',
+          description: 'Full-text search across all fields: term, translation, explanation, example, synonyms, antonyms, notes',
+        },
         tag: {
           type: 'string',
           description: 'Optional tag to filter cards',
         },
+        tags: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter cards that have ANY of these tags (OR logic)',
+        },
+        tagsMatchAll: {
+          type: 'array',
+          items: { type: 'string' },
+          description: 'Filter cards that have ALL of these tags (AND logic)',
+        },
+        type: {
+          type: 'string',
+          enum: ['word', 'phrase', 'sentence'],
+          description: 'Filter by card type',
+        },
+        createdAfter: {
+          type: 'string',
+          description: 'Filter cards created after this date (ISO 8601 format, e.g., 2024-01-01)',
+        },
+        createdBefore: {
+          type: 'string',
+          description: 'Filter cards created before this date (ISO 8601 format, e.g., 2024-12-31)',
+        },
+        sortBy: {
+          type: 'string',
+          enum: ['createdAt', 'updatedAt', 'term'],
+          description: 'Sort field (default: createdAt)',
+        },
+        sortOrder: {
+          type: 'string',
+          enum: ['asc', 'desc'],
+          description: 'Sort order (default: desc)',
+        },
+        offset: {
+          type: 'number',
+          description: 'Number of cards to skip for pagination (default: 0)',
+        },
         limit: {
           type: 'number',
           description: 'Maximum number of cards to return (default: 50)',
+        },
+        includeFullContent: {
+          type: 'boolean',
+          description: 'Include full card content in response (default: false, returns summary only)',
         },
       },
     },
@@ -280,11 +325,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   try {
     switch (name) {
       case 'list_cards': {
-        const { search, tag, limit = 50 } = (args || {}) as { search?: string; tag?: string; limit?: number };
+        const {
+          search,
+          fullTextSearch,
+          tag,
+          tags,
+          tagsMatchAll,
+          type: cardType,
+          createdAfter,
+          createdBefore,
+          sortBy = 'createdAt',
+          sortOrder = 'desc',
+          offset = 0,
+          limit = 50,
+          includeFullContent = false,
+        } = (args || {}) as {
+          search?: string;
+          fullTextSearch?: string;
+          tag?: string;
+          tags?: string[];
+          tagsMatchAll?: string[];
+          type?: 'word' | 'phrase' | 'sentence';
+          createdAfter?: string;
+          createdBefore?: string;
+          sortBy?: 'createdAt' | 'updatedAt' | 'term';
+          sortOrder?: 'asc' | 'desc';
+          offset?: number;
+          limit?: number;
+          includeFullContent?: boolean;
+        };
         const cards = await storage.getCards();
         let result = Array.from(cards.values());
 
-        // Apply filters
+        // Apply basic search filter (term or translation)
         if (search) {
           const searchLower = search.toLowerCase();
           result = result.filter(
@@ -294,12 +367,116 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           );
         }
 
+        // Apply full-text search (across all fields)
+        if (fullTextSearch) {
+          const searchLower = fullTextSearch.toLowerCase();
+          result = result.filter((c) => {
+            // Search in front fields
+            if (c.front.term.toLowerCase().includes(searchLower)) return true;
+            if (c.front.phonetic?.toLowerCase().includes(searchLower)) return true;
+            if (c.front.example?.toLowerCase().includes(searchLower)) return true;
+            if (c.front.exampleCn?.toLowerCase().includes(searchLower)) return true;
+            if (c.front.morphemes?.some(m => m.toLowerCase().includes(searchLower))) return true;
+            
+            // Search in back fields
+            if (c.back?.translation?.toLowerCase().includes(searchLower)) return true;
+            if (c.back?.explanation?.toLowerCase().includes(searchLower)) return true;
+            if (c.back?.explanationCn?.toLowerCase().includes(searchLower)) return true;
+            if (c.back?.synonyms?.some(s => s.toLowerCase().includes(searchLower))) return true;
+            if (c.back?.antonyms?.some(a => a.toLowerCase().includes(searchLower))) return true;
+            if (c.back?.notes?.toLowerCase().includes(searchLower)) return true;
+            
+            // Search in tags
+            if (c.tags?.some(t => t.toLowerCase().includes(searchLower))) return true;
+            
+            return false;
+          });
+        }
+
+        // Apply single tag filter (backward compatible)
         if (tag) {
           result = result.filter((c) => c.tags?.includes(tag));
         }
 
-        // Apply limit and format output
-        result = result.slice(0, limit);
+        // Apply multiple tags filter (OR logic)
+        if (tags && tags.length > 0) {
+          result = result.filter((c) => c.tags?.some(t => tags.includes(t)));
+        }
+
+        // Apply multiple tags filter (AND logic)
+        if (tagsMatchAll && tagsMatchAll.length > 0) {
+          result = result.filter((c) => tagsMatchAll.every(t => c.tags?.includes(t)));
+        }
+
+        // Apply card type filter
+        if (cardType) {
+          result = result.filter((c) => c.type === cardType);
+        }
+
+        // Apply date range filters
+        if (createdAfter) {
+          const afterDate = new Date(createdAfter).getTime();
+          if (!isNaN(afterDate)) {
+            result = result.filter((c) => c.createdAt >= afterDate);
+          }
+        }
+
+        if (createdBefore) {
+          const beforeDate = new Date(createdBefore).getTime();
+          if (!isNaN(beforeDate)) {
+            result = result.filter((c) => c.createdAt <= beforeDate);
+          }
+        }
+
+        // Get total count before pagination
+        const totalCount = result.length;
+
+        // Apply sorting
+        result.sort((a, b) => {
+          let comparison = 0;
+          switch (sortBy) {
+            case 'term':
+              comparison = a.front.term.localeCompare(b.front.term);
+              break;
+            case 'updatedAt':
+              comparison = a.updatedAt - b.updatedAt;
+              break;
+            case 'createdAt':
+            default:
+              comparison = a.createdAt - b.createdAt;
+              break;
+          }
+          return sortOrder === 'asc' ? comparison : -comparison;
+        });
+
+        // Apply pagination
+        result = result.slice(offset, offset + limit);
+
+        // Format output based on includeFullContent flag
+        const formatCard = (c: Card) => {
+          if (includeFullContent) {
+            return {
+              id: c.id,
+              type: c.type,
+              front: c.front,
+              back: c.back,
+              tags: c.tags,
+              version: c.version,
+              createdAt: new Date(c.createdAt).toISOString(),
+              updatedAt: new Date(c.updatedAt).toISOString(),
+            };
+          }
+          return {
+            id: c.id,
+            type: c.type,
+            term: c.front.term,
+            phonetic: c.front.phonetic,
+            translation: c.back?.translation,
+            tags: c.tags,
+            version: c.version,
+            createdAt: new Date(c.createdAt).toISOString(),
+          };
+        };
 
         return {
           content: [
@@ -307,17 +484,11 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
               type: 'text',
               text: JSON.stringify(
                 {
+                  total: totalCount,
+                  offset,
+                  limit,
                   count: result.length,
-                  cards: result.map((c) => ({
-                    id: c.id,
-                    type: c.type,
-                    term: c.front.term,
-                    phonetic: c.front.phonetic,
-                    translation: c.back?.translation,
-                    tags: c.tags,
-                    version: c.version,
-                    createdAt: new Date(c.createdAt).toISOString(),
-                  })),
+                  cards: result.map(formatCard),
                 },
                 null,
                 2
