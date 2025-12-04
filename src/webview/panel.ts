@@ -332,6 +332,69 @@ export class FlashcardPanel {
       max-width: 1000px;
       width: 100%;
       text-align: center;
+      position: relative;
+      transform-style: preserve-3d;
+      transition: transform 0.5s ease-in-out, opacity 0.3s ease-out;
+    }
+    
+    /* Flip animation for revealing answer */
+    .card.flipped {
+      transform: rotateY(180deg);
+    }
+    
+    /* Slide out animation for next card */
+    .card.slide-out {
+      transform: translateX(-120%) rotate(-5deg);
+      opacity: 0;
+      transition: transform 0.4s ease-in, opacity 0.3s ease-out;
+    }
+    
+    /* Slide in animation for new card */
+    .card.slide-in {
+      animation: slideIn 0.4s ease-out forwards;
+    }
+    
+    @keyframes slideIn {
+      0% {
+        transform: translateX(100%) rotate(5deg);
+        opacity: 0;
+      }
+      100% {
+        transform: translateX(0) rotate(0deg);
+        opacity: 1;
+      }
+    }
+    
+    .card-side {
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+    }
+    
+    .card-front {
+      transform: rotateY(0deg);
+    }
+    
+    .card-back {
+      transform: rotateY(180deg);
+      position: absolute;
+      top: 40px;
+      left: 60px;
+      right: 60px;
+    }
+    
+    .card-back.hidden {
+      display: none;
+    }
+    
+    .card.flipped .card-front {
+      visibility: hidden;
+    }
+    
+    .card.flipped .card-back {
+      position: relative;
+      top: 0;
+      left: 0;
+      right: 0;
     }
     
     .term-container {
@@ -585,42 +648,60 @@ export class FlashcardPanel {
   
   <div id="app">
     <div class="card" id="card-view">
-      <div class="term-container">
-        <div class="term" id="term"></div>
+      <!-- Card Front -->
+      <div class="card-side card-front" id="card-front">
+        <div class="term-container">
+          <div class="term" id="term"></div>
+        </div>
+        <div class="phonetic-container" id="phonetic-container">
+          <div class="phonetic" id="phonetic"></div>
+          <button class="btn-speak btn-speak-small" onclick="speakTerm()" title="Pronounce term">🔊</button>
+        </div>
+        <div class="morphemes" id="morphemes"></div>
+        
+        <div class="example-container" id="example-container-front">
+          <div class="example-header">
+            <div class="example" id="example-front"></div>
+            <button class="btn-speak btn-speak-small" onclick="speakExample()" title="Pronounce example">🔊</button>
+          </div>
+        </div>
+        
+        <div class="buttons">
+          <button class="btn-reveal" onclick="revealBack()">Show Answer</button>
+        </div>
       </div>
-      <div class="phonetic-container" id="phonetic-container">
-        <div class="phonetic" id="phonetic"></div>
-        <button class="btn-speak btn-speak-small" onclick="speakTerm()" title="Pronounce term">🔊</button>
-      </div>
-      <div class="morphemes" id="morphemes"></div>
       
-      <div id="front-buttons" class="buttons">
-        <button class="btn-reveal" onclick="revealBack()">Show Answer</button>
-      </div>
-      
-      <div id="back-content" class="back-content hidden">
+      <!-- Card Back -->
+      <div class="card-side card-back hidden" id="card-back">
+        <div class="term-container">
+          <div class="term" id="term-back"></div>
+        </div>
+        <div class="phonetic-container">
+          <div class="phonetic" id="phonetic-back"></div>
+          <button class="btn-speak btn-speak-small" onclick="speakTerm()" title="Pronounce term">🔊</button>
+        </div>
+        
         <div class="translation" id="translation"></div>
-        <div id="back-buttons" class="buttons">
+        <div class="explanation" id="explanation"></div>
+        <div class="explanation-cn" id="explanation-cn"></div>
+        
+        <div class="example-container" id="example-container">
+          <div class="example-header">
+            <div class="example" id="example"></div>
+            <button class="btn-speak btn-speak-small" onclick="speakExample()" title="Pronounce example">🔊</button>
+          </div>
+          <div class="example-cn" id="example-cn"></div>
+        </div>
+        
+        <div class="synonyms" id="synonyms"></div>
+        <div class="antonyms" id="antonyms"></div>
+        
+        <div class="buttons">
           <button class="btn-again" onclick="rate('again')">Again</button>
           <button class="btn-hard" onclick="rate('hard')">Hard</button>
           <button class="btn-good" onclick="rate('good')">Good</button>
           <button class="btn-easy" onclick="rate('easy')">Easy</button>
         </div>
-      </div>
-      
-      <div class="example-container" id="example-container">
-        <div class="example-header">
-          <div class="example" id="example"></div>
-          <button class="btn-speak btn-speak-small" onclick="speakExample()" title="Pronounce term">🔊</button>
-        </div>
-        <div class="example-cn" id="example-cn"></div>
-      </div>
-      
-      <div class="back-content-extra hidden">
-        <div class="explanation" id="explanation"></div>
-        <div class="explanation-cn" id="explanation-cn"></div>
-        <div class="synonyms" id="synonyms"></div>
-        <div class="antonyms" id="antonyms"></div>
       </div>
     </div>
     
@@ -667,13 +748,32 @@ export class FlashcardPanel {
       }
     });
     
+    // Flag to track if we're transitioning to next card
+    let isTransitioning = false;
+    
     function showCard(card, srs) {
       currentCard = card;
       
-      document.getElementById('card-view').classList.remove('hidden');
+      const cardView = document.getElementById('card-view');
+      
+      // If transitioning, apply slide-in animation
+      if (isTransitioning) {
+        cardView.classList.remove('slide-out');
+        cardView.classList.add('slide-in');
+        // Remove animation class after it completes
+        setTimeout(() => {
+          cardView.classList.remove('slide-in');
+        }, 400);
+        isTransitioning = false;
+      }
+      
+      cardView.classList.remove('hidden');
+      cardView.classList.remove('flipped'); // Reset to front
+      document.getElementById('card-front').classList.remove('hidden');
+      document.getElementById('card-back').classList.add('hidden');
       document.getElementById('empty-view').classList.add('hidden');
       
-      // Show front
+      // === FRONT SIDE ===
       document.getElementById('term').textContent = card.front.term;
       
       // Show phonetic with container
@@ -697,30 +797,43 @@ export class FlashcardPanel {
         morphemesEl.classList.add('hidden');
       }
       
-      // Handle example with speak button
-      const exampleContainer = document.getElementById('example-container');
-      const exampleEl = document.getElementById('example');
+      // Handle example on front (without Chinese translation)
+      const exampleContainerFront = document.getElementById('example-container-front');
+      const exampleFrontEl = document.getElementById('example-front');
       if (card.front.example) {
-        exampleEl.textContent = card.front.example;
-        exampleContainer.classList.remove('hidden');
+        exampleFrontEl.textContent = card.front.example;
+        exampleContainerFront.classList.remove('hidden');
       } else {
-        exampleContainer.classList.add('hidden');
+        exampleContainerFront.classList.add('hidden');
       }
       
-      // Prepare back (including example Chinese translation)
+      // === BACK SIDE ===
       const back = card.back || {};
       
-      // Example Chinese - prepare but keep hidden until back is revealed
-      const exampleCnEl = document.getElementById('example-cn');
-      exampleCnEl.textContent = card.front.exampleCn || '';
-      // Will be shown when back-content is revealed
+      // Term and phonetic on back
+      document.getElementById('term-back').textContent = card.front.term;
+      document.getElementById('phonetic-back').textContent = card.front.phonetic || '';
       
+      // Translation
       document.getElementById('translation').textContent = back.translation || '(no translation)';
       
+      // Explanation
       document.getElementById('explanation').textContent = back.explanation || '';
       document.getElementById('explanation').classList.toggle('hidden', !back.explanation);
       document.getElementById('explanation-cn').textContent = back.explanationCn || '';
       document.getElementById('explanation-cn').classList.toggle('hidden', !back.explanationCn);
+      
+      // Example with Chinese translation on back
+      const exampleContainer = document.getElementById('example-container');
+      const exampleEl = document.getElementById('example');
+      const exampleCnEl = document.getElementById('example-cn');
+      if (card.front.example) {
+        exampleEl.textContent = card.front.example;
+        exampleCnEl.textContent = card.front.exampleCn || '';
+        exampleContainer.classList.remove('hidden');
+      } else {
+        exampleContainer.classList.add('hidden');
+      }
       
       // Show synonyms
       const synonymsEl = document.getElementById('synonyms');
@@ -739,14 +852,6 @@ export class FlashcardPanel {
       } else {
         antonymsEl.classList.add('hidden');
       }
-      
-      // Reset to front view
-      document.getElementById('front-buttons').classList.remove('hidden');
-      document.getElementById('back-content').classList.add('hidden');
-      document.querySelector('.back-content-extra').classList.add('hidden');
-      
-      // Hide example Chinese translation on front
-      exampleCnEl.classList.add('hidden');
       
       // Auto-pronounce when card appears (if enabled)
       if (ttsSettings.autoPlay) {
@@ -986,19 +1091,22 @@ export class FlashcardPanel {
     function revealBack() {
       if (!currentCard) return;
       
-      document.getElementById('front-buttons').classList.add('hidden');
-      document.getElementById('back-content').classList.remove('hidden');
-      document.querySelector('.back-content-extra').classList.remove('hidden');
+      // Trigger flip animation
+      const cardView = document.getElementById('card-view');
+      const cardFront = document.getElementById('card-front');
+      const cardBack = document.getElementById('card-back');
       
-      // Show example Chinese translation when revealing back
-      const exampleCnEl = document.getElementById('example-cn');
-      if (currentCard.front.exampleCn) {
-        exampleCnEl.classList.remove('hidden');
-      }
+      cardView.classList.add('flipped');
+      
+      // After flip animation starts, show back and hide front
+      setTimeout(() => {
+        cardFront.classList.add('hidden');
+        cardBack.classList.remove('hidden');
+      }, 250); // Half of the animation duration
       
       // Auto-pronounce when revealing back (if enabled)
       if (ttsSettings.autoPlay) {
-        speak();
+        setTimeout(() => speak(), 400);
       }
       
       vscode.postMessage({ type: 'reveal_back', cardId: currentCard.id });
@@ -1007,12 +1115,20 @@ export class FlashcardPanel {
     function rate(rating) {
       if (!currentCard) return;
       
-      vscode.postMessage({
-        type: 'rate_card',
-        cardId: currentCard.id,
-        rating: rating,
-        mode: 'flashcard'
-      });
+      // Trigger slide-out animation
+      const cardView = document.getElementById('card-view');
+      cardView.classList.add('slide-out');
+      isTransitioning = true;
+      
+      // Send rating after animation starts
+      setTimeout(() => {
+        vscode.postMessage({
+          type: 'rate_card',
+          cardId: currentCard.id,
+          rating: rating,
+          mode: 'flashcard'
+        });
+      }, 200);
     }
     
     function refresh() {
