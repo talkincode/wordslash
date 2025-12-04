@@ -304,6 +304,12 @@ export class FlashcardPanel {
   <style>
     :root {
       --vscode-font-family: var(--vscode-editor-font-family, 'Segoe UI', sans-serif);
+      --card-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 2px 10px rgba(0, 0, 0, 0.2);
+      --card-shadow-hover: 0 14px 50px rgba(0, 0, 0, 0.35), 0 4px 15px rgba(0, 0, 0, 0.25);
+      --accent-gradient: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --accent-blue: #4fc3f7;
+      --accent-purple: #b388ff;
+      --accent-green: #69f0ae;
     }
     
     * {
@@ -322,311 +328,434 @@ export class FlashcardPanel {
       justify-content: center;
       min-height: 100vh;
       padding: 24px;
+      /* Subtle background pattern */
+      background-image: 
+        radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.05) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(118, 75, 162, 0.05) 0%, transparent 50%);
     }
     
     .card {
-      background-color: var(--vscode-input-background);
-      border: 2px solid var(--vscode-input-border);
-      border-radius: 12px;
-      padding: 40px 60px;
-      max-width: 1000px;
+      background: linear-gradient(145deg, 
+        var(--vscode-input-background) 0%, 
+        color-mix(in srgb, var(--vscode-input-background) 95%, #667eea) 100%);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 20px;
+      padding: 48px 64px;
+      max-width: 900px;
       width: 100%;
       text-align: center;
       position: relative;
-      transform-style: preserve-3d;
-      transition: transform 0.5s ease-in-out, opacity 0.3s ease-out;
+      transition: transform 0.4s ease-out, opacity 0.3s ease-out, box-shadow 0.3s ease;
+      box-shadow: var(--card-shadow);
+      overflow: hidden;
     }
     
-    /* Flip animation for revealing answer */
-    .card.flipped {
-      transform: rotateY(180deg);
+    /* Decorative top accent line */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: var(--accent-gradient);
+      border-radius: 20px 20px 0 0;
+    }
+    
+    /* Subtle glow effect */
+    .card::after {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(102, 126, 234, 0.03) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    
+    .card:hover {
+      box-shadow: var(--card-shadow-hover);
     }
     
     /* Slide out animation for next card */
     .card.slide-out {
-      transform: translateX(-120%) rotate(-5deg);
+      transform: translateX(-100%);
       opacity: 0;
-      transition: transform 0.4s ease-in, opacity 0.3s ease-out;
+      transition: transform 0.25s ease-in, opacity 0.2s ease-out;
+      will-change: transform, opacity;
     }
     
     /* Slide in animation for new card */
     .card.slide-in {
-      animation: slideIn 0.4s ease-out forwards;
+      animation: slideIn 0.3s ease-out forwards;
+      will-change: transform, opacity;
     }
     
     @keyframes slideIn {
       0% {
-        transform: translateX(100%) rotate(5deg);
+        transform: translateX(60%);
         opacity: 0;
       }
       100% {
-        transform: translateX(0) rotate(0deg);
+        transform: translateX(0);
         opacity: 1;
       }
     }
     
     .card-side {
-      backface-visibility: hidden;
-      -webkit-backface-visibility: hidden;
+      width: 100%;
     }
     
     .card-front {
-      transform: rotateY(0deg);
+      display: block;
     }
     
-    .card-back {
-      transform: rotateY(180deg);
-      position: absolute;
-      top: 40px;
-      left: 60px;
-      right: 60px;
-    }
-    
-    .card-back.hidden {
+    .card-front.hidden {
       display: none;
     }
     
-    .card.flipped .card-front {
-      visibility: hidden;
+    .card-back {
+      display: none;
     }
     
-    .card.flipped .card-back {
-      position: relative;
-      top: 0;
-      left: 0;
-      right: 0;
+    .card-back:not(.hidden) {
+      display: block;
+      animation: slideUp 0.35s ease-out;
+    }
+    
+    @keyframes slideUp {
+      0% {
+        transform: translateY(30px);
+        opacity: 0;
+      }
+      100% {
+        transform: translateY(0);
+        opacity: 1;
+      }
     }
     
     .term-container {
-      margin-bottom: 16px;
+      margin-bottom: 20px;
     }
     
     .term {
-      font-size: 2.5em;
-      font-weight: 500;
-      color: var(--vscode-textLink-foreground);
-      letter-spacing: 0.04em;
-      font-family: var(--vscode-editor-font-family), Monaco, 'SF Mono',  'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-size: 2.8em;
+      font-weight: 600;
+      background: linear-gradient(135deg, var(--accent-blue) 0%, var(--accent-purple) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: 0.03em;
+      font-family: var(--vscode-editor-font-family), Monaco, 'SF Mono', 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      text-shadow: 0 0 40px rgba(79, 195, 247, 0.2);
     }
     
     .btn-speak {
-      background: transparent;
-      border: 3px solid var(--vscode-textLink-foreground);
-      color: var(--vscode-textLink-foreground);
-      width: 48px;
-      height: 48px;
+      background: linear-gradient(135deg, rgba(79, 195, 247, 0.1) 0%, rgba(179, 136, 255, 0.1) 100%);
+      border: 2px solid var(--accent-blue);
+      color: var(--accent-blue);
+      width: 44px;
+      height: 44px;
       border-radius: 50%;
       cursor: pointer;
-      font-size: 22px;
+      font-size: 18px;
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      transition: all 0.2s;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
       padding: 0;
       flex-shrink: 0;
     }
     
     .btn-speak:hover {
-      background: rgba(0, 122, 204, 0.15);
-      transform: scale(1.08);
+      background: linear-gradient(135deg, rgba(79, 195, 247, 0.2) 0%, rgba(179, 136, 255, 0.2) 100%);
+      transform: scale(1.15);
+      box-shadow: 0 0 20px rgba(79, 195, 247, 0.3);
+    }
+    
+    .btn-speak:active {
+      transform: scale(0.95);
     }
     
     .btn-speak-small {
       width: 36px;
       height: 36px;
-      font-size: 16px;
-      border-width: 2px;
+      font-size: 15px;
     }
     
     .phonetic-container {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
-      margin-bottom: 20px;
+      gap: 14px;
+      margin-bottom: 24px;
     }
     
     .phonetic {
-      font-size: 1.3em;
+      font-size: 1.25em;
       color: var(--vscode-descriptionForeground);
       font-family: 'Lucida Sans Unicode', 'Arial Unicode MS', sans-serif;
+      opacity: 0.85;
+      letter-spacing: 0.02em;
     }
     
     .morphemes {
-      font-size: 2.1em;
-      color: #00d4ff;
+      font-size: 1.9em;
+      background: linear-gradient(90deg, var(--accent-blue) 0%, var(--accent-green) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
       font-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
       margin-top: 8px;
-      margin-bottom: 16px;
-      letter-spacing: 0.05em;
+      margin-bottom: 20px;
+      letter-spacing: 0.04em;
     }
     
     .morphemes .separator {
       color: var(--vscode-descriptionForeground);
-      margin: 0 6px;
+      -webkit-text-fill-color: var(--vscode-descriptionForeground);
+      margin: 0 8px;
       font-weight: normal;
+      opacity: 0.6;
     }
     
     .morphemes .morpheme {
-      font-weight: 500;
+      font-weight: 600;
     }
     
     .example-container {
-      margin-top: 9px;
-      margin-bottom: 12px;
-      padding: 20px 24px;
-      background-color: var(--vscode-textBlockQuote-background);
-      border-radius: 8px;
+      margin-top: 16px;
+      margin-bottom: 20px;
+      padding: 24px 28px;
+      background: linear-gradient(135deg, 
+        rgba(102, 126, 234, 0.08) 0%, 
+        rgba(118, 75, 162, 0.08) 100%);
+      border-radius: 16px;
+      border: 1px solid rgba(255, 255, 255, 0.05);
+      position: relative;
+    }
+    
+    .example-container::before {
+      content: '"';
+      position: absolute;
+      top: 8px;
+      left: 16px;
+      font-size: 3em;
+      color: var(--accent-purple);
+      opacity: 0.2;
+      font-family: Georgia, serif;
+      line-height: 1;
     }
     
     .example-header {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 12px;
+      gap: 14px;
     }
     
     .example {
-      font-size: 1.6em;
-      line-height: 1.7;
+      font-size: 1.5em;
+      line-height: 1.8;
       color: var(--vscode-editor-foreground);
       font-style: italic;
+      opacity: 0.95;
     }
     
     .example-cn {
-      font-size: 1.1em;
-      line-height: 1.5;
+      font-size: 1.05em;
+      line-height: 1.6;
       color: var(--vscode-descriptionForeground);
-      margin-top: 8px;
+      margin-top: 12px;
       text-align: center;
-      opacity: 0.9;
+      opacity: 0.8;
     }
     
     .back-content {
-      margin-top: 24px;
+      margin-top: 28px;
     }
     
     .translation {
-      font-size: 1.8em;
-      margin-bottom: 7px;
-      ont-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
-      font-weight: 500;
+      font-size: 2em;
+      margin-bottom: 12px;
+      font-family: var(--vscode-editor-font-family), 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+      font-weight: 600;
+      color: var(--accent-green);
     }
     
     .explanation {
-      font-size: 1.3em;
-      line-height: 1.6;
+      font-size: 1.25em;
+      line-height: 1.7;
       color: var(--vscode-descriptionForeground);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
+      opacity: 0.9;
     }
     
     .explanation-cn {
-      font-size: 1.2em;
-      line-height: 1.5;
+      font-size: 1.15em;
+      line-height: 1.6;
       color: var(--vscode-descriptionForeground);
-      opacity: 0.85;
-      margin-bottom: 16px;
+      opacity: 0.75;
+      margin-bottom: 20px;
     }
     
     .synonyms, .antonyms {
       font-size: 0.95em;
       color: var(--vscode-descriptionForeground);
-      margin-top: 8px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: 6px;
     }
     
     .synonyms span, .antonyms span {
       display: inline-block;
-      background: var(--vscode-badge-background);
-      color: var(--vscode-badge-foreground);
-      padding: 2px 8px;
-      border-radius: 4px;
+      background: linear-gradient(135deg, rgba(105, 240, 174, 0.15) 0%, rgba(79, 195, 247, 0.15) 100%);
+      color: var(--accent-green);
+      padding: 4px 12px;
+      border-radius: 20px;
       margin: 2px 4px;
       font-size: 0.9em;
+      border: 1px solid rgba(105, 240, 174, 0.2);
+      transition: all 0.2s ease;
+    }
+    
+    .synonyms span:hover, .antonyms span:hover {
+      background: linear-gradient(135deg, rgba(105, 240, 174, 0.25) 0%, rgba(79, 195, 247, 0.25) 100%);
+      transform: translateY(-2px);
+    }
+    
+    .antonyms span {
+      background: linear-gradient(135deg, rgba(255, 138, 128, 0.15) 0%, rgba(255, 183, 77, 0.15) 100%);
+      color: #ffab91;
+      border: 1px solid rgba(255, 138, 128, 0.2);
+    }
+    
+    .antonyms span:hover {
+      background: linear-gradient(135deg, rgba(255, 138, 128, 0.25) 0%, rgba(255, 183, 77, 0.25) 100%);
     }
     
     .buttons {
       display: flex;
-      gap: 12px;
+      gap: 14px;
       justify-content: center;
-      margin-top: 24px;
+      margin-top: 28px;
       flex-wrap: wrap;
     }
     
     button {
-      padding: 10px 24px;
+      padding: 12px 28px;
       border: none;
-      border-radius: 6px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 14px;
       font-weight: 600;
-      transition: opacity 0.2s;
+      transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
     }
     
     button:hover {
-      opacity: 0.85;
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+    }
+    
+    button:active {
+      transform: translateY(-1px);
     }
     
     .btn-again {
-      background-color: #d32f2f;
+      background: linear-gradient(135deg, #ff5252 0%, #d32f2f 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(211, 47, 47, 0.3);
     }
     
     .btn-hard {
-      background-color: #f57c00;
+      background: linear-gradient(135deg, #ffb74d 0%, #f57c00 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(245, 124, 0, 0.3);
     }
     
     .btn-good {
-      background-color: #388e3c;
+      background: linear-gradient(135deg, #69f0ae 0%, #388e3c 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(56, 142, 60, 0.3);
     }
     
     .btn-easy {
-      background-color: #1976d2;
+      background: linear-gradient(135deg, #4fc3f7 0%, #1976d2 100%);
       color: white;
+      box-shadow: 0 4px 15px rgba(25, 118, 210, 0.3);
     }
     
     .btn-reveal {
-      background-color: var(--vscode-button-background);
-      color: var(--vscode-button-foreground);
-      padding: 12px 36px;
-      font-size: 15px;
+      background: var(--accent-gradient);
+      color: white;
+      padding: 14px 48px;
+      font-size: 16px;
+      border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(102, 126, 234, 0.4);
+    }
+    
+    .btn-reveal:hover {
+      box-shadow: 0 8px 30px rgba(102, 126, 234, 0.5);
     }
     
     .empty-state {
       text-align: center;
-      padding: 40px;
+      padding: 60px 40px;
+      background: linear-gradient(145deg, 
+        var(--vscode-input-background) 0%, 
+        color-mix(in srgb, var(--vscode-input-background) 95%, #667eea) 100%);
+      border-radius: 20px;
+      box-shadow: var(--card-shadow);
     }
     
     .empty-state h2 {
-      font-size: 3em;
-      margin-bottom: 16px;
+      font-size: 4em;
+      margin-bottom: 20px;
+      animation: bounce 1s ease infinite;
+    }
+    
+    @keyframes bounce {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-10px); }
     }
     
     .empty-state p {
-      font-size: 1.2em;
+      font-size: 1.3em;
+      opacity: 0.8;
     }
     
     .toolbar {
       position: fixed;
-      top: 12px;
-      right: 12px;
+      top: 16px;
+      right: 16px;
       display: flex;
       gap: 8px;
     }
     
     .btn-toolbar {
-      background: var(--vscode-button-secondaryBackground);
+      background: rgba(255, 255, 255, 0.1);
       color: var(--vscode-button-secondaryForeground);
-      border: none;
-      padding: 6px 12px;
-      border-radius: 4px;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      padding: 8px 16px;
+      border-radius: 20px;
       cursor: pointer;
       font-size: 12px;
+      font-weight: 500;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     }
     
     .btn-toolbar:hover {
-      opacity: 0.8;
+      background: rgba(255, 255, 255, 0.2);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
     }
     
     .hidden {
@@ -680,6 +809,7 @@ export class FlashcardPanel {
           <div class="phonetic" id="phonetic-back"></div>
           <button class="btn-speak btn-speak-small" onclick="speakTerm()" title="Pronounce term">🔊</button>
         </div>
+        <div class="morphemes" id="morphemes-back"></div>
         
         <div class="translation" id="translation"></div>
         <div class="explanation" id="explanation"></div>
@@ -763,7 +893,7 @@ export class FlashcardPanel {
         // Remove animation class after it completes
         setTimeout(() => {
           cardView.classList.remove('slide-in');
-        }, 400);
+        }, 300);
         isTransitioning = false;
       }
       
@@ -813,6 +943,17 @@ export class FlashcardPanel {
       // Term and phonetic on back
       document.getElementById('term-back').textContent = card.front.term;
       document.getElementById('phonetic-back').textContent = card.front.phonetic || '';
+      
+      // Show morphemes on back
+      const morphemesBackEl = document.getElementById('morphemes-back');
+      if (card.front.morphemes && card.front.morphemes.length > 0) {
+        morphemesBackEl.innerHTML = card.front.morphemes
+          .map(m => '<span class="morpheme">' + m + '</span>')
+          .join('<span class="separator">+</span>');
+        morphemesBackEl.classList.remove('hidden');
+      } else {
+        morphemesBackEl.classList.add('hidden');
+      }
       
       // Translation
       document.getElementById('translation').textContent = back.translation || '(no translation)';
@@ -1091,22 +1232,16 @@ export class FlashcardPanel {
     function revealBack() {
       if (!currentCard) return;
       
-      // Trigger flip animation
-      const cardView = document.getElementById('card-view');
       const cardFront = document.getElementById('card-front');
       const cardBack = document.getElementById('card-back');
       
-      cardView.classList.add('flipped');
-      
-      // After flip animation starts, show back and hide front
-      setTimeout(() => {
-        cardFront.classList.add('hidden');
-        cardBack.classList.remove('hidden');
-      }, 250); // Half of the animation duration
+      // Switch content - animation is triggered by CSS
+      cardFront.classList.add('hidden');
+      cardBack.classList.remove('hidden');
       
       // Auto-pronounce when revealing back (if enabled)
       if (ttsSettings.autoPlay) {
-        setTimeout(() => speak(), 400);
+        setTimeout(() => speak(), 200);
       }
       
       vscode.postMessage({ type: 'reveal_back', cardId: currentCard.id });
@@ -1128,7 +1263,7 @@ export class FlashcardPanel {
           rating: rating,
           mode: 'flashcard'
         });
-      }, 200);
+      }, 150);
     }
     
     function refresh() {
