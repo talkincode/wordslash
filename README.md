@@ -1,192 +1,335 @@
 # WordSlash
 
 <p align="center">
-  <strong>📚 在 VS Code 中构建你的英语学习闭环</strong>
+  <img src="media/icon.png" width="128" height="128" alt="WordSlash Logo">
 </p>
 
 <p align="center">
-  <em>选词即学 · 闪卡复习 · SM-2 间隔重复 · 数据永不丢失</em>
+  <strong>📚 Build Your English Learning Loop in VS Code</strong>
+</p>
+
+<p align="center">
+  <em>Select to Learn · Flashcard Review · SM-2 Spaced Repetition · Never Lose Data</em>
+</p>
+
+<p align="center">
+  <a href="#-installation">Installation</a> •
+  <a href="#-quick-start">Quick Start</a> •
+  <a href="#%EF%B8%8F-configuration">Configuration</a> •
+  <a href="#-mcp-server">MCP Server</a> •
+  <a href="#-commands">Commands</a>
 </p>
 
 ---
 
-## ✨ 特性
+## ✨ Features
 
-- 🎯 **无缝集成** - 在代码编辑过程中，选中任意单词/短语一键添加到学习卡片
-- 🔄 **科学复习** - 基于 SM-2 算法的间隔重复系统，高效记忆
-- 💾 **数据安全** - 本地 JSONL 存储 + 事件溯源，支持导出/导入备份
-- 🎨 **简洁交互** - 专注学习的闪卡界面，评分即走，不打断心流
+- 🎯 **Seamless Integration** - Add any word/phrase to flashcards with a single click while coding
+- 🔄 **Scientific Review** - SM-2 spaced repetition algorithm for efficient memorization
+- 📊 **Visual Dashboard** - Heatmap, donut charts, and progress tracking
+- 🔊 **Text-to-Speech** - Multiple TTS engines for pronunciation practice
+- 💾 **Data Safety** - Local JSONL storage with event sourcing, export/import support
+- 🤖 **AI Integration** - MCP Server for Claude Desktop and other AI assistants
 
-## 📦 安装
+---
 
-1. 打开 VS Code
-2. 按 `Ctrl+Shift+X` (Windows/Linux) 或 `Cmd+Shift+X` (macOS) 打开扩展面板
-3. 搜索 `WordSlash`
-4. 点击安装
+## 📦 Installation
 
-## 🚀 快速开始
+### From VS Code Marketplace
 
-### 添加卡片
+1. Open VS Code
+2. Press `Ctrl+Shift+X` (Windows/Linux) or `Cmd+Shift+X` (macOS)
+3. Search for **"WordSlash"**
+4. Click **Install**
 
-1. 在编辑器中选中你想学习的单词或短语
-2. 右键选择 **"Add to WordSlash"**
-3. 卡片将自动创建，包含选中的词汇和所在行的上下文
+### From VSIX File
 
-> 💡 如果没有选中内容，会自动提取光标所在的单词
+1. Download the `.vsix` file from [GitHub Releases](https://github.com/talkincode/wordslash/releases)
+2. Open VS Code
+3. Press `Ctrl+Shift+P` / `Cmd+Shift+P`
+4. Type **"Install from VSIX"** and select the downloaded file
 
-### 开始复习
-
-1. 按 `Ctrl+Shift+P` / `Cmd+Shift+P` 打开命令面板
-2. 输入 `WordSlash: Open Flashcards`
-3. 开始你的闪卡学习之旅！
-
-## 🎮 复习操作
-
-### 正面（Front）
-
-显示单词/短语和例句，你可以选择：
-
-| 按钮       | 说明       | 后续动作                 |
-| ---------- | ---------- | ------------------------ |
-| **Again**  | 完全不记得 | 翻面查看解释，卡片重置   |
-| **Hard**   | 勉强记得   | 翻面查看解释，短间隔复习 |
-| **Good**   | 记得       | 直接下一张，正常间隔     |
-| **Easy**   | 非常熟悉   | 直接下一张，延长间隔     |
-| **Reveal** | 想看解释   | 翻面（不计入评分）       |
-
-### 背面（Back）
-
-显示翻译、解释、同义词、反义词等信息，点击 **Next** 进入下一张卡片。
-
-## ⚙️ 配置选项
-
-在 VS Code 设置中搜索 `wordslash` 进行配置：
-
-| 配置项                               | 类型    | 默认值  | 说明                     |
-| ------------------------------------ | ------- | ------- | ------------------------ |
-| `wordslash.backup.directory`         | string  | `null`  | 备份文件存储目录         |
-| `wordslash.backup.auto`              | boolean | `false` | 是否启用自动备份         |
-| `wordslash.backup.autoIntervalHours` | number  | `24`    | 自动备份间隔（小时）     |
-| `wordslash.study.newCardsPerDay`     | number  | `10`    | 每日新卡片数量上限       |
-| `wordslash.privacy.storeFilePath`    | boolean | `false` | 是否存储卡片来源文件路径 |
-
-## 📋 命令列表
-
-| 命令                                 | 说明               |
-| ------------------------------------ | ------------------ |
-| `WordSlash: Open Flashcards`         | 打开闪卡复习界面   |
-| `WordSlash: Add Card from Selection` | 从选中内容添加卡片 |
-| `WordSlash: Export Backup`           | 导出备份文件       |
-| `WordSlash: Import Backup`           | 从备份文件导入     |
-
-## 💾 数据与备份
-
-### 存储位置
-
-- 数据存储在 VS Code 的 `globalStorage` 目录中
-- 采用 JSONL 格式 + 事件溯源架构，数据可追溯、可重建
-
-### 数据文件
-
-- `cards.jsonl` - 卡片实体数据
-- `events.jsonl` - 学习事件日志（追加写入，不修改历史）
-- `index.json` - 可重建的索引缓存
-
-### 导出备份
-
-1. 运行命令 `WordSlash: Export Backup`
-2. 选择保存目录
-3. 备份文件将包含所有卡片和学习记录
-
-### 导入恢复
-
-1. 运行命令 `WordSlash: Import Backup`
-2. 选择备份文件
-3. 数据将智能合并（同 ID 取最新版本）
-
-## 🧠 SM-2 算法说明
-
-WordSlash 使用经典的 SM-2 间隔重复算法：
-
-- **Again (q=0)**: 重置复习进度，间隔设为 1 天
-- **Hard (q=3)**: 保持进度，较短间隔
-- **Good (q=4)**: 正常推进，标准间隔
-- **Easy (q=5)**: 快速推进，延长间隔
-
-算法会根据你的表现动态调整每张卡片的复习间隔，实现高效记忆。
-
-## 🧪 验收测试
-
-确保以下场景正常工作：
-
-1. ✅ 选中单词 → 右键 Add → 打开 Flashcards → 卡片立即出现
-2. ✅ 点击 Again → 生成复习事件 → 自动翻面显示背面
-3. ✅ 点击 Easy → 直接进入下一张卡片
-4. ✅ Export 备份 → 删除数据 → Import → 数据完整恢复
-
-## 🗺️ 开发路线图
-
-- [x] **v0.1** - 核心闭环：命令、存储、闪卡界面、SM-2 调度
-- [ ] **v0.2** - 可靠性：导出/导入、索引重建、单元测试
-- [ ] **v0.3** - 体验优化：每日上限、统计面板、快捷键
-- [ ] **v0.4** - 智能生成：LLM 自动生成卡片背面内容
-
-## 🛠️ 开发
+### From Source
 
 ```bash
-# 克隆仓库
-git clone https://github.com/your-username/wordslash.git
+git clone https://github.com/talkincode/wordslash.git
 cd wordslash
-
-# 安装依赖
 npm install
-
-# 编译
 npm run compile
-
-# 运行测试
-npm test
-
-# 在 VS Code 中调试
-# 按 F5 启动扩展开发宿主
+# Press F5 in VS Code to launch Extension Development Host
 ```
 
-### 项目结构
+---
+
+## 🚀 Quick Start
+
+### 1. Add a Card
+
+1. Select any word or phrase in the editor
+2. Right-click and choose **"Add to WordSlash"**
+3. The card is created with context from the current line
+
+> 💡 If nothing is selected, the word under cursor is automatically extracted
+
+### 2. Start Learning
+
+- Click the **WordSlash icon** in the Activity Bar (sidebar)
+- Or press `Ctrl+Shift+P` / `Cmd+Shift+P` → **"WordSlash: Open Flashcards"**
+
+### 3. Review Cards
+
+| Button     | Meaning           | Effect                          |
+| ---------- | ----------------- | ------------------------------- |
+| **Again**  | Don't remember    | Flip to back, reset interval    |
+| **Hard**   | Barely remember   | Flip to back, short interval    |
+| **Good**   | Remember          | Next card, normal interval      |
+| **Easy**   | Very familiar     | Next card, extended interval    |
+| **Reveal** | Want to see back  | Flip (not scored)               |
+
+---
+
+## ⚙️ Configuration
+
+Open VS Code Settings (`Ctrl+,` / `Cmd+,`) and search for `wordslash`:
+
+### General Settings
+
+| Setting | Type | Default | Description |
+| ------- | ---- | ------- | ----------- |
+| `wordslash.newCardsPerDay` | number | `20` | Maximum new cards per day |
+| `wordslash.privacy.storeFilePath` | boolean | `false` | Store source file path in cards |
+
+### Text-to-Speech (TTS)
+
+| Setting | Type | Default | Description |
+| ------- | ---- | ------- | ----------- |
+| `wordslash.tts.engine` | string | `youdao` | TTS engine: `youdao`, `google`, `browser`, `azure`, `openai` |
+| `wordslash.tts.rate` | number | `1.0` | Speech rate (0.5-2.0) |
+| `wordslash.tts.autoPlay` | boolean | `true` | Auto-play pronunciation on card appear |
+| `wordslash.tts.azureKey` | string | - | Azure Speech API key (for azure engine) |
+| `wordslash.tts.azureRegion` | string | `eastus` | Azure region |
+| `wordslash.tts.openaiKey` | string | - | OpenAI API key (for openai engine) |
+
+### TTS Engine Comparison
+
+| Engine | Quality | Offline | API Key Required |
+| ------ | ------- | ------- | ---------------- |
+| **Youdao** | ⭐⭐⭐⭐ | ❌ | No |
+| **Google** | ⭐⭐⭐ | ❌ | No |
+| **Browser** | ⭐⭐ | ✅ | No |
+| **Azure** | ⭐⭐⭐⭐⭐ | ❌ | Yes |
+| **OpenAI** | ⭐⭐⭐⭐⭐ | ❌ | Yes |
+
+---
+
+## 📋 Commands
+
+Press `Ctrl+Shift+P` / `Cmd+Shift+P` to open the Command Palette:
+
+| Command | Description |
+| ------- | ----------- |
+| `WordSlash: Open Dashboard` | Open the full dashboard with charts and statistics |
+| `WordSlash: Open Flashcards` | Open the flashcard review interface |
+| `WordSlash: Add Card from Selection` | Create a card from selected text |
+| `WordSlash: Export Backup` | Export all data to a backup file |
+| `WordSlash: Import Backup` | Import data from a backup file |
+| `WordSlash: Import Cards from JSON` | Bulk import cards from JSON file |
+| `WordSlash: Export JSON Template` | Export a template for bulk import |
+| `WordSlash: Open Settings` | Open WordSlash settings |
+
+---
+
+## 💾 Data & Backup
+
+### Storage Location
+
+Data is stored in VS Code's `globalStorage`:
+
+- **macOS**: `~/Library/Application Support/Code/User/globalStorage/wordslash.wordslash/`
+- **Windows**: `%APPDATA%/Code/User/globalStorage/wordslash.wordslash/`
+- **Linux**: `~/.config/Code/User/globalStorage/wordslash.wordslash/`
+
+### Data Files
+
+| File | Description |
+| ---- | ----------- |
+| `cards.jsonl` | Vocabulary cards (append-only) |
+| `events.jsonl` | Review events (immutable history) |
+| `index.json` | Rebuildable cache |
+
+### Export & Import
+
+```bash
+# Export backup
+Ctrl+Shift+P → WordSlash: Export Backup → Choose directory
+
+# Import backup
+Ctrl+Shift+P → WordSlash: Import Backup → Select backup file
+```
+
+> 💡 Import is idempotent - same backup imported twice won't create duplicates
+
+---
+
+## 🤖 MCP Server
+
+WordSlash includes an MCP (Model Context Protocol) Server that allows AI assistants like Claude Desktop to manage your vocabulary cards.
+
+### Installation
+
+```bash
+cd scripts/mcp-server
+npm install
+npm run build
+```
+
+### Configure Claude Desktop
+
+Add to `~/Library/Application Support/Claude/claude_desktop_config.json` (macOS):
+
+```json
+{
+  "mcpServers": {
+    "wordslash": {
+      "command": "node",
+      "args": ["/path/to/wordslash/scripts/mcp-server/dist/index.js"],
+      "env": {
+        "WORDSLASH_STORAGE_PATH": "/optional/custom/path"
+      }
+    }
+  }
+}
+```
+
+**Windows**: `%APPDATA%/Claude/claude_desktop_config.json`
+
+### Configure VS Code (Copilot / Continue)
+
+For VS Code with GitHub Copilot or Continue extension:
+
+```json
+{
+  "mcpServers": [
+    {
+      "name": "wordslash",
+      "command": "node",
+      "args": ["/path/to/wordslash/scripts/mcp-server/dist/index.js"]
+    }
+  ]
+}
+```
+
+### Available MCP Tools
+
+| Tool | Description |
+| ---- | ----------- |
+| `create_card` | Create a vocabulary card with term, translation, examples, etc. |
+| `list_cards` | List all cards (with optional search/tag filter) |
+| `get_card` | Get a card by ID or term |
+| `update_card` | Update an existing card |
+| `delete_card` | Soft delete a card |
+| `delete_cards_batch` | Batch delete cards |
+| `list_events` | List review events (learning history) |
+| `get_index` | Get index status (card count, due count) |
+| `get_dashboard_stats` | Get comprehensive statistics |
+| `generate_knowledge_graph` | Generate vocabulary relationship graph |
+
+### Example Usage with Claude
+
+```
+User: Add the word "ephemeral" with translation "短暂的" and example "Fame is ephemeral."
+
+Claude: I'll create a vocabulary card for "ephemeral".
+[Uses create_card tool]
+✓ Card created successfully!
+
+User: What words do I have with the tag "GRE"?
+
+Claude: Let me check your vocabulary cards.
+[Uses list_cards tool with tag filter]
+You have 15 cards tagged with "GRE": ephemeral, ubiquitous, ...
+```
+
+### Environment Variables
+
+| Variable | Description | Default |
+| -------- | ----------- | ------- |
+| `WORDSLASH_STORAGE_PATH` | Custom storage path | VS Code globalStorage |
+
+---
+
+## 🧠 SM-2 Algorithm
+
+WordSlash uses the classic SM-2 spaced repetition algorithm:
+
+| Rating | Quality | Interval Effect |
+| ------ | ------- | --------------- |
+| **Again** | q=0 | Reset to 1 day, increment lapses |
+| **Hard** | q=3 | Short interval |
+| **Good** | q=4 | Normal interval |
+| **Easy** | q=5 | Extended interval |
+
+The algorithm dynamically adjusts review intervals based on your performance, optimizing long-term retention.
+
+---
+
+## 🛠️ Development
+
+```bash
+# Clone repository
+git clone https://github.com/talkincode/wordslash.git
+cd wordslash
+
+# Install dependencies
+npm install
+
+# Compile
+npm run compile
+
+# Run tests
+npm test
+
+# Watch mode
+npm run watch
+
+# Debug in VS Code
+# Press F5 to launch Extension Development Host
+```
+
+### Project Structure
 
 ```
 wordslash/
 ├── src/
-│   ├── extension.ts           # 扩展入口，注册命令
-│   ├── storage/
-│   │   ├── storage.ts         # JSONL 读写，原子写入
-│   │   ├── indexer.ts         # 索引重建
-│   │   └── schema.ts          # 类型定义与版本
-│   ├── srs/
-│   │   ├── sm2.ts             # SM-2 算法实现
-│   │   └── scheduler.ts       # 下一张卡片选择
-│   ├── commands/
-│   │   ├── addCard.ts
-│   │   ├── exportBackup.ts
-│   │   ├── importBackup.ts
-│   │   └── openFlashcards.ts
-│   └── webview/
-│       ├── panel.ts           # Webview 创建与消息路由
-│       ├── protocol.ts        # 消息类型定义
-│       └── ui/
-│           ├── index.html
-│           ├── app.ts
-│           └── styles.css
-├── package.json
-└── tsconfig.json
+│   ├── extension.ts        # Extension entry point
+│   ├── commands/           # VS Code commands
+│   ├── storage/            # JSONL storage, indexer, schema
+│   ├── srs/                # SM-2 algorithm, scheduler
+│   └── webview/            # Dashboard, Flashcards UI
+├── scripts/
+│   └── mcp-server/         # MCP Server for AI integration
+├── media/                  # Icons and assets
+└── package.json
 ```
 
-## 📄 许可证
+---
 
-MIT License
+## 🗺️ Roadmap
 
-## 🤝 贡献
+- [x] **v0.1** - Core loop: commands, storage, flashcards, SM-2
+- [x] **v0.2** - Dashboard, heatmap, charts, MCP server
+- [ ] **v0.3** - Experience: keyboard shortcuts, batch operations
+- [ ] **v0.4** - AI: LLM-powered card content generation
 
-欢迎提交 Issue 和 Pull Request！
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.
+
+## 🤝 Contributing
+
+Issues and Pull Requests are welcome!
 
 ---
 
