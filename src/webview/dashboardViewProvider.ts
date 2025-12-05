@@ -49,7 +49,7 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
           FlashcardPanel.createOrShow(this._extensionUri, this._storage, this._context);
           break;
         case 'openDashboard':
-          DashboardPanel.createOrShow(this._extensionUri, this._storage);
+          DashboardPanel.createOrShow(this._extensionUri, this._storage, this._context);
           break;
         case 'openSettings':
           vscode.commands.executeCommand('workbench.action.openSettings', 'wordslash');
@@ -310,31 +310,34 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       color: var(--vscode-descriptionForeground);
     }
     
-    .quick-links {
-      margin-top: 12px;
+    .secondary-actions {
+      margin-top: 16px;
       padding-top: 12px;
       border-top: 1px solid var(--vscode-sideBar-border);
       display: flex;
-      justify-content: center;
-      gap: 16px;
+      flex-wrap: wrap;
+      gap: 4px 16px;
     }
     
-    .quick-link {
-      font-size: 0.85em;
+    .secondary-link {
+      font-size: 0.8em;
       color: var(--vscode-textLink-foreground);
-      text-decoration: none;
+      background: none;
+      border: none;
+      padding: 4px 0;
       cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
     }
     
-    .quick-link:hover {
+    .secondary-link:hover {
       text-decoration: underline;
     }
     
-    .backup-links {
-      margin-top: 8px;
-      display: flex;
-      justify-content: center;
-      gap: 16px;
+    .secondary-link .link-icon {
+      font-size: 1em;
     }
     
     .loading {
@@ -416,15 +419,22 @@ export class DashboardViewProvider implements vscode.WebviewViewProvider {
       </button>
     </div>
     
-    <div class="quick-links">
-      <a class="quick-link" onclick="openSettings()">⚙️ Settings</a>
-      <a class="quick-link" onclick="refresh()">🔄 Refresh</a>
-    </div>
-    
-    <div class="backup-links">
-      <a class="quick-link" onclick="exportBackup()">📤 Export Backup</a>
-      <a class="quick-link" onclick="importBackup()">📥 Import Backup</a>
-      <a class="quick-link" onclick="exportTemplate()">📄 Export Template</a>
+    <div class="secondary-actions">
+      <a class="secondary-link" onclick="openSettings()">
+        <span class="link-icon">⚙️</span> Settings
+      </a>
+      <a class="secondary-link" onclick="refresh()">
+        <span class="link-icon">🔄</span> Refresh
+      </a>
+      <a class="secondary-link" onclick="exportBackup()">
+        <span class="link-icon">📤</span> Export Backup
+      </a>
+      <a class="secondary-link" onclick="importBackup()">
+        <span class="link-icon">📥</span> Import Backup
+      </a>
+      <a class="secondary-link" onclick="exportTemplate()">
+        <span class="link-icon">📄</span> Export Template
+      </a>
     </div>
   </div>
 
